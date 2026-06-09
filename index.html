@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Traceur</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Lilita+One&family=Lobster+Two:wght@700&family=Play:wght@400;700&display=swap" rel="stylesheet">
+  <script defer src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+  <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: transparent;
+            font-family: Arial, sans-serif;
+        }
+        #game {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        canvas {
+            display: block;
+            touch-action: none;
+        }
+        #loading {
+            position: fixed;
+            inset: 0;
+            background: #2d5016;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        #loading span {
+            color: #ffffff;
+            font-size: 22px;
+            font-family: 'Play, Arial';
+            letter-spacing: 0.05em;
+        }
+        #loading .dots::after {
+            content: '';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+        @keyframes dots {
+            0%   { content: ''; }
+            25%  { content: '.'; }
+            50%  { content: '..'; }
+            75%  { content: '...'; }
+        }
+    </style>
+</head>
+<body>
+  <div id="loading"><span>Chargement en cours<span class="dots"></span></span></div>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
