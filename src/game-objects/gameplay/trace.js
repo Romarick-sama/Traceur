@@ -6,11 +6,11 @@ export class Trace {
    * @param {Phaser.Scene} scene
    * @param {object} [options]
    * @param {number} [options.minDistance=8] - minimum distance between two recorded points
-   * @param {number} [options.maxPoints=500] - maximum number of points kept in the trace
+   * @param {number} [options.maxPoints=5000] - maximum number of points kept in the trace
    * @param {number} [options.color=0xff9060] - line color
    * @param {number} [options.lineWidth=2] - line width
    */
-  constructor(scene, { minDistance = 8, maxPoints = 500, color = 0xff9060, lineWidth = 10 } = {}) {
+  constructor(scene, { minDistance = 8, maxPoints = 5000, color = 0xff9060, lineWidth = 10 } = {}) {
     this.scene = scene;
     this.minDistance = minDistance;
     this.maxPoints = maxPoints;
