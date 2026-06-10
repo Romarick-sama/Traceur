@@ -1,0 +1,48 @@
+object/redFlags.js : Les red flags du chien qui peuvent être des objets, des actions, etc. Si ce type 
+d’évènements arrivent, le chien n’ira jamais jusqu’au bout de la piste et c’est donc perdu !
+
+object/level.js : Classe qui contient la base d’un niveau. Pourra être utilisé comme classe mère pour 
+les niveaux avec les spécificités (?)
+
+object/solution.js : Classe qui sera sûrement classe mère pour un héritage et sert de base pour les 
+solutions. Devra faire une classe par niveau vu que chaque niveau aura une solution différente.
+
+object/tree.js : Classe qui représente un arbre. Pourra être utilisé pour la construction de la map
+
+object/bushes.js : Classe qui représente un buisson qui peuvent être franchissables (ou pas et ils sont 
+infranchissables ?? dans ce cas, on mets des hautes herbes qui sont franchissables ? )
+
+object/thornBush.js: Classe qui représente un buisson à épines type ronces. franchissable (mais si le 
+joueur les franchit, ça échoue à chaque fois ?)
+
+
+scenes/map.js: Classe qui contient la carte / map du jeu avec des éléments qui sont disposés 
+différemment selon le niveau (a voir, peut-être une classe mère et faire une map par niveau?). 
+Il y aura un bouton “Se cacher” qui permet de valider le tracé du joueur et ainsi, passer à la 
+correction (voir classe “Correction”).
+
+scenes/correction.js : Même scène qui garde en mémoire le tracé du joueur. Cette scene fait partir 
+sur le même départ que le joueur un chien qui va suivre le tracé du joueur sauf si il y a un redFlag 
+ou que ça s’écarte trop des indications (distance, changement de directions, etc). 
+Dans le cas d’un redFlag, le chien reste sur place et on ajoute un texte + 2 boutons : 
+“Oups, le tracé comprend <REDFLAG> donc le chien n’a pas réussi à trouver l’humain”
+Bouton “Recommencer” : relance la partie
+Bouton “Voir la solution” : Montre la solution (voir classe “solution” ci dessous) avec un traçeur qui 
+réalise le tracé idéal pour le chien avec explications
+Si le chien réussit la piste et trouve l’humain,  on ajoute un texte + 3 boutons : 
+“Bravo, le chien a reussi à retrouver l’humain caché grâce à un tracé qi correspond au chien !”
+Bouton “Recommencer” : relance la partie
+Bouton “Voir la solution” : Montre la solution (voir classe “solution” ci dessous) avec un traçeur qui 
+réalise le tracé idéal pour le chien avec explications
+Bouton “Chien suivant !” : lance la scène “coach” avec un nouveau chien (toujours le même pour le moment)
+
+scenes/solution.js : Une scène qui rejoue la scène avec un traceur qui fait une trace correcte + 
+explications avec des bulles de ce qui faut faire / ne pas faire.
+
+scenes/coach.js : Interface simpliste d’une personne qui parle et d’un texte qui s’affiche comme il 
+nous parlait (style visual novel, voir ci-dessous). Cela indique les caractéristiques du chien dont on 
+doit tracer la piste
+Texte du coach à écrire à la place de blablabla, avec texte qui s’affiche, mot par mot : 
+“Merci de te cacher pour Nomade ! Je voudrais une piste de 200m en faisant le plus tout droit pour que 
+Nomade prenne encore confiance en l’activité !”
+

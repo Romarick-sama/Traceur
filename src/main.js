@@ -1,6 +1,8 @@
-import { STYLECONFIG } from './StyleConfig.js';
-import Map from './scenes/map.js';
-import IntroScene from './scenes/introScene.js';
+import { STYLECONFIG } from './common/style-config.js';
+import { PreloadScene } from './scenes/preload-scene.js';
+import { IntroScene } from './scenes/intro-scene.js';
+import { LevelChoiceScene } from './scenes/level-choice-scene.js';
+import { GameScene } from './scenes/game-scene.js';
 
 const CONFIG = {
   type: Phaser.AUTO,
@@ -11,7 +13,14 @@ const CONFIG = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [IntroScene, LevelChoiceScene, Map],
+  physics: {
+    default: 'arcade',
+    arcade: {
+      gravity: { y: 0 },
+      debug: false,
+    },
+  },
+  scene: [PreloadScene, IntroScene, LevelChoiceScene, GameScene],
 };
 
 new Phaser.Game(CONFIG);
