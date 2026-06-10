@@ -1,7 +1,6 @@
 import { STYLECONFIG } from '../common/style-config.js';
 import { SCENE_KEYS } from '../common/scene-keys.js';
-import { Human } from '../game-objects/characters/human.js';
-import { Dog } from '../game-objects/characters/dog.js';
+import { Level } from '../game-objects/gameplay/level.js';
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -9,19 +8,27 @@ export class GameScene extends Phaser.Scene {
   }
 
   init(data) {
-    this.level = data?.level ?? 1;
+    this.levelNumber = data?.level ?? 1;
   }
 
   create() {
     this.cameras.main.setBackgroundColor(STYLECONFIG.MAIN_BACKGROUND_COLOR);
 
-    this.human = new Human(this, this.scale.width / 2, this.scale.height / 2);
-    this.dog = new Dog(this, this.scale.width / 2 + 60, this.scale.height / 2);
+    this.level = new Level(this, {
+      human: { x: this.scale.width / 2, y: this.scale.height / 2 },
+      dog: { x: this.scale.width / 2 + 160, y: this.scale.height / 2 },
+      environment: [
+        { type: 'BUSH', x: this.scale.width / 2 - 160, y: this.scale.height / 2 },
+        { type: 'THORN_BUSH', x: this.scale.width / 2 + 160, y: this.scale.height / 2 - 160 },
+        { type: 'TREE', x: this.scale.width / 2 - 160, y: this.scale.height / 2 - 160 },
+      ],
+    });
+    this.level.create();
 
     this.cursors = this.input.keyboard.createCursorKeys();
   }
 
   update() {
-    this.human.update(this.cursors);
+    this.level.update(this.cursors);
   }
 }
