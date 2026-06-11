@@ -15,10 +15,20 @@ export class Solution {
    * @param {number} [options.color=0x22cc70] - color of the ideal trace
    * @param {number} [options.lineWidth=4] - line width of the ideal trace
    */
-  constructor(scene, waypoints = [], { color = 0x22cc70, lineWidth = 4 } = {}) {
+  constructor(
+    scene,
+    waypoints = [],
+    {
+      color = 0x22cc70,
+      lineWidth = 4,
+    } = {},
+  ) {
     this.scene = scene;
     this.waypoints = waypoints;
-    this.trace = new Trace(scene, { color, lineWidth });
+    this.trace = new Trace(scene, {
+      color,
+      lineWidth,
+    });
   }
 
   /**
@@ -27,7 +37,13 @@ export class Solution {
    */
   draw() {
     this.trace.clear();
-    this.waypoints.forEach(({ x, y }) => this.trace.addPoint(x, y));
+    this.waypoints.forEach(({
+      x,
+      y,
+    }) => this.trace.addPoint(
+      x,
+      y,
+    ));
   }
 
   /**

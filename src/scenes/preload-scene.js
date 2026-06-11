@@ -7,8 +7,14 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   preload() {
-    SPRITE_ASSETS.forEach(({ key, path }) => {
-      this.load.image(key, path);
+    SPRITE_ASSETS.forEach(({
+      key,
+      path,
+    }) => {
+      this.load.image(
+        key,
+        path,
+      );
     });
   }
 

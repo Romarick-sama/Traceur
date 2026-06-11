@@ -14,8 +14,19 @@ export class Human extends Phaser.Physics.Arcade.Sprite {
    * @param {string} [texture=ASSET_KEYS.HUMAN]
    * @param {number} [speed=160] - movement speed in pixels per second
    */
-  constructor(scene, x, y, texture = ASSET_KEYS.HUMAN, speed = 160) {
-    super(scene, x, y, texture);
+  constructor(
+    scene,
+    x,
+    y,
+    texture = ASSET_KEYS.HUMAN,
+    speed = 160,
+  ) {
+    super(
+      scene,
+      x,
+      y,
+      texture,
+    );
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
@@ -47,13 +58,13 @@ export class Human extends Phaser.Physics.Arcade.Sprite {
       this.setVelocityX(-this.speed);
     } else if (cursors.right.isDown) {
       this.setVelocityX(this.speed);
-    };
+    }
 
     if (cursors.up.isDown) {
       this.setVelocityY(-this.speed);
     } else if (cursors.down.isDown) {
       this.setVelocityY(this.speed);
-    };
+    }
 
     this.trace.addPoint(this.x, this.y);
   }

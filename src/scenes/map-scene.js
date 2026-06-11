@@ -1,4 +1,4 @@
-import { STYLECONFIG, LGDT_COLORS } from '../common/style-config.js';
+import { STYLE_CONFIGURATION, BRAND_COLORS } from '../common/style-config.js';
 import { SCENE_KEYS } from '../common/scene-keys.js';
 import { Level } from '../game-objects/gameplay/level.js';
 import { getLevelConfig } from '../data/levels-data.js';
@@ -10,18 +10,29 @@ export class MapScene extends Phaser.Scene {
   }
 
   init(data) {
-    this.levelNumber = data?.level ?? 1;
+    let levelNumber;
+    if (data && data.level !== undefined && data.level !== null) {
+      levelNumber = data.level;
+    } else {
+      levelNumber = 1;
+    }
+    this.levelNumber = levelNumber;
   }
 
   create() {
-    this.cameras.main.setBackgroundColor(STYLECONFIG.MAIN_BACKGROUND_COLOR);
+    this.cameras.main.setBackgroundColor(STYLE_CONFIGURATION.MAIN_BACKGROUND_COLOR);
     this.levelConfig = getLevelConfig(this.levelNumber);
 
     this._showLoading();
 
     // Defer to the next tick so the loading text has a chance to render
     // before the (synchronous) generation runs.
-    this.time.delayedCall(0, () => this._buildLevel());
+    this.time.delayedCall(
+      0,
+      () => {
+        this._buildLevel();
+      },
+    );
   }
 
   /**
@@ -30,11 +41,16 @@ export class MapScene extends Phaser.Scene {
    * @return {void}
    */
   _showLoading() {
-    this.loadingText = this.add.text(this.scale.width / 2, this.scale.height / 2, 'Génération du niveau en cours...', {
-      fontSize: STYLECONFIG.STEP_HUD_FONT_SIZE,
-      fontFamily: STYLECONFIG.STEP_HUD_FONT_FAMILY,
-      color: STYLECONFIG.STEP_HUD_COLOR,
-    }).setOrigin(0.5);
+    this.loadingText = this.add.text(
+      this.scale.width / 2,
+      this.scale.height / 2,
+      'Génération du niveau en cours...',
+      {
+        fontSize: STYLE_CONFIGURATION.STEP_HUD_FONT_SIZE,
+        fontFamily: STYLE_CONFIGURATION.STEP_HUD_FONT_FAMILY,
+        color: STYLE_CONFIGURATION.STEP_HUD_COLOR,
+      },
+    ).setOrigin(0.5);
   }
 
   /**
@@ -50,11 +66,14 @@ export class MapScene extends Phaser.Scene {
 
     this.loadingText.destroy();
 
-    this.level = new Level(this, {
-      ...this.levelConfig,
-      environment: this.generatedEnvironment,
-      dog: null,
-    });
+    this.level = new Level(
+      this,
+      {
+        ...this.levelConfig,
+        environment: this.generatedEnvironment,
+        dog: null,
+      },
+    );
     this.level.create();
 
     this.cursors = this.input.keyboard.createCursorKeys();
@@ -68,18 +87,37 @@ export class MapScene extends Phaser.Scene {
    * @return {void}
    */
   _createHideButton() {
-    const BUTTON = this.add.text(this.scale.width - 16, 16, 'Se cacher', {
-      fontSize: STYLECONFIG.HIDE_BUTTON_FONT_SIZE,
-      fontFamily: STYLECONFIG.HIDE_BUTTON_FONT_FAMILY,
-      color: STYLECONFIG.HIDE_BUTTON_FONT_COLOR,
-      fontStyle: STYLECONFIG.HIDE_BUTTON_FONT_STYLE,
-      backgroundColor: STYLECONFIG.HIDE_BUTTON_COLOR,
-      padding: { x: 16, y: 8 },
-    }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
+    const BUTTON = this.add.text(
+      this.scale.width - 16,
+      16,
+      'Se cacher',
+      {
+        fontSize: STYLE_CONFIGURATION.HIDE_BUTTON_FONT_SIZE,
+        fontFamily: STYLE_CONFIGURATION.HIDE_BUTTON_FONT_FAMILY,
+        color: STYLE_CONFIGURATION.HIDE_BUTTON_FONT_COLOR,
+        fontStyle: STYLE_CONFIGURATION.HIDE_BUTTON_FONT_STYLE,
+        backgroundColor: STYLE_CONFIGURATION.HIDE_BUTTON_COLOR,
+        padding: {
+          x: 16,
+          y: 8,
+        },
+      },
+    ).setOrigin(
+      1,
+      0,
+    ).setInteractive({
+      useHandCursor: true,
+    });
 
-    BUTTON.on('pointerover', () => BUTTON.setBackgroundColor(STYLECONFIG.HIDE_BUTTON_HOVER_COLOR));
-    BUTTON.on('pointerout', () => BUTTON.setBackgroundColor(STYLECONFIG.HIDE_BUTTON_COLOR));
-    BUTTON.on('pointerdown', () => this._goToCorrection());
+    BUTTON.on('pointerover', () => {
+      BUTTON.setBackgroundColor(STYLE_CONFIGURATION.HIDE_BUTTON_HOVER_COLOR);
+    });
+    BUTTON.on('pointerout', () => {
+      BUTTON.setBackgroundColor(STYLE_CONFIGURATION.HIDE_BUTTON_COLOR);
+    });
+    BUTTON.on('pointerdown', () => {
+      this._goToCorrection();
+    });
   }
 
   /**
@@ -87,7 +125,13 @@ export class MapScene extends Phaser.Scene {
    * @return {void}
    */
   _goToCorrection() {
-    const TRACE_POINTS = this.level.human?.trace.points ?? [];
+    let tracePoints;
+    if (this.level.human && this.level.human.trace.points !== undefined && this.level.human.trace.points !== null) {
+      tracePoints = this.level.human.trace.points;
+    } else {
+      tracePoints = [];
+    }
+    const TRACE_POINTS = tracePoints;
 
     this.scene.start(SCENE_KEYS.CORRECTION, {
       level: this.levelNumber,
@@ -99,6 +143,8 @@ export class MapScene extends Phaser.Scene {
   }
 
   update() {
-    this.level?.update(this.cursors);
+    if (this.level) {
+      this.level.update(this.cursors);
+    };
   }
 }

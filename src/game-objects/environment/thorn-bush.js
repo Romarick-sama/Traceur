@@ -7,8 +7,18 @@ export class ThornBush extends Phaser.Physics.Arcade.Image {
    * @param {number} y
    * @param {string} [profile.texture=ASSET_KEYS.THORN_BUSH]
    */
-  constructor(scene, x, y, texture = ASSET_KEYS.THORN_BUSH) {
-    super(scene, x, y, texture);
+  constructor(
+    scene,
+    x,
+    y,
+    texture = ASSET_KEYS.THORN_BUSH,
+  ) {
+    super(
+      scene,
+      x,
+      y,
+      texture,
+    );
     scene.add.existing(this);
     scene.physics.add.existing(this);
   }

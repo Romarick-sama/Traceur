@@ -7,8 +7,18 @@ export class Tree extends Phaser.Physics.Arcade.Image {
    * @param {number} y
    * @param {string} [profile.texture=ASSET_KEYS.TREE]
    */
-  constructor(scene, x, y, texture = ASSET_KEYS.TREE) {
-    super(scene, x, y, texture);
+  constructor(
+    scene,
+    x,
+    y,
+    texture = ASSET_KEYS.TREE,
+  ) {
+    super(
+      scene,
+      x,
+      y,
+      texture,
+    );
     this.setScale(0.15);
     scene.add.existing(this);
     scene.physics.add.existing(this);

@@ -1,4 +1,4 @@
-import { STYLECONFIG } from '../common/style-config.js';
+import { STYLE_CONFIGURATION } from '../common/style-config.js';
 
 /**
  * Small text bubble shown above a game object, used to display
@@ -9,15 +9,25 @@ export class SpeechBubble {
    * @param {Phaser.Scene} scene
    */
   constructor(scene) {
-    this.text = scene.add.text(0, 0, '', {
-      fontSize: STYLECONFIG.SPEECH_BUBBLE_FONT_SIZE,
-      fontFamily: STYLECONFIG.SPEECH_BUBBLE_FONT_FAMILY,
-      color: STYLECONFIG.SPEECH_BUBBLE_COLOR,
-      backgroundColor: STYLECONFIG.SPEECH_BUBBLE_BACKGROUND_COLOR,
-      padding: { x: 10, y: 6 },
-      align: 'center',
-      wordWrap: { width: 220 },
-    }).setOrigin(0.5, 1).setDepth(10).setVisible(false);
+    this.text = scene.add.text(
+      0,
+      0,
+      '',
+      {
+        fontSize: STYLE_CONFIGURATION.SPEECH_BUBBLE_FONT_SIZE,
+        fontFamily: STYLE_CONFIGURATION.SPEECH_BUBBLE_FONT_FAMILY,
+        color: STYLE_CONFIGURATION.SPEECH_BUBBLE_COLOR,
+        backgroundColor: STYLE_CONFIGURATION.SPEECH_BUBBLE_BACKGROUND_COLOR,
+        padding: {
+          x: 10,
+          y: 6,
+        },
+        align: 'center',
+        wordWrap: {
+          width: 220,
+        },
+      },
+    ).setOrigin(0.5, 1).setDepth(10).setVisible(false);
   }
 
   /**

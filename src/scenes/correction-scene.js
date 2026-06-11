@@ -1,4 +1,4 @@
-import { STYLECONFIG, LGDT_COLORS } from '../common/style-config.js';
+import { STYLE_CONFIGURATION, BRAND_COLORS } from '../common/style-config.js';
 import { SCENE_KEYS } from '../common/scene-keys.js';
 import { Level } from '../game-objects/gameplay/level.js';
 import { Dog } from '../game-objects/characters/dog.js';
@@ -15,20 +15,60 @@ export class CorrectionScene extends Phaser.Scene {
   }
 
   init(data) {
-    this.levelNumber = data?.level ?? 1;
-    this.playerTrace = data?.trace ?? [];
-    this.redFlags = data?.redFlags ?? [];
-    this.environment = data?.environment;
-    this.solution = data?.solution;
+    let levelNumber;
+    if (data && data.level !== undefined && data.level !== null) {
+      levelNumber = data.level;
+    } else {
+      levelNumber = 1;
+    }
+    this.levelNumber = levelNumber;
+
+    let playerTrace;
+    if (data && data.trace !== undefined && data.trace !== null) {
+      playerTrace = data.trace;
+    } else {
+      playerTrace = [];
+    }
+    this.playerTrace = playerTrace;
+
+    let redFlags;
+    if (data && data.redFlags !== undefined && data.redFlags !== null) {
+      redFlags = data.redFlags;
+    } else {
+      redFlags = [];
+    }
+    this.redFlags = redFlags;
+
+    let environment;
+    if (data) {
+      environment = data.environment;
+    }
+    this.environment = environment;
+
+    let solution;
+    if (data) {
+      solution = data.solution;
+    }
+    this.solution = solution;
   }
 
   create() {
     this.levelConfig = getLevelConfig(this.levelNumber);
-    this.cameras.main.setBackgroundColor(STYLECONFIG.MAIN_BACKGROUND_COLOR);
+    this.cameras.main.setBackgroundColor(STYLE_CONFIGURATION.MAIN_BACKGROUND_COLOR);
 
-    this.level = new Level(this, {
-      environment: this.environment ?? this.levelConfig.environment,
-    });
+    let environment;
+    if (this.environment !== undefined && this.environment !== null) {
+      environment = this.environment;
+    } else {
+      environment = this.levelConfig.environment;
+    }
+
+    this.level = new Level(
+      this,
+      {
+        environment: environment,
+      },
+    );
     this.level.create();
 
     this._drawPlayerTrace();
@@ -39,7 +79,9 @@ export class CorrectionScene extends Phaser.Scene {
       return;
     };
 
-    this._playDogTrace(() => this._showResult(true));
+    this._playDogTrace(() => {
+      this._showResult(true);
+    });
   }
 
   /**
@@ -52,11 +94,21 @@ export class CorrectionScene extends Phaser.Scene {
       return;
     };
 
-    GRAPHICS.lineStyle(4, 0xffffff, 0.25);
+    GRAPHICS.lineStyle(
+      4,
+      0xffffff,
+      0.25,
+    );
     GRAPHICS.beginPath();
-    GRAPHICS.moveTo(this.playerTrace[0].x, this.playerTrace[0].y);
-    for (let i = 1; i < this.playerTrace.length; i++) {
-      GRAPHICS.lineTo(this.playerTrace[i].x, this.playerTrace[i].y);
+    GRAPHICS.moveTo(
+      this.playerTrace[0].x,
+      this.playerTrace[0].y,
+    );
+    for (let pointIndex = 1; pointIndex < this.playerTrace.length; pointIndex++) {
+      GRAPHICS.lineTo(
+        this.playerTrace[pointIndex].x,
+        this.playerTrace[pointIndex].y,
+      );
     };
     GRAPHICS.strokePath();
   }
@@ -67,13 +119,35 @@ export class CorrectionScene extends Phaser.Scene {
    * @return {void}
    */
   _createActors() {
-    const START = this.playerTrace[0] ?? this.levelConfig.human;
-    const END = this.playerTrace[this.playerTrace.length - 1] ?? this.levelConfig.human;
+    let start;
+    if (this.playerTrace[0] !== undefined && this.playerTrace[0] !== null) {
+      start = this.playerTrace[0];
+    } else {
+      start = this.levelConfig.human;
+    }
+    const START = start;
 
-    this.human = new Human(this, END.x, END.y);
+    let end;
+    if (this.playerTrace[this.playerTrace.length - 1] !== undefined && this.playerTrace[this.playerTrace.length - 1] !== null) {
+      end = this.playerTrace[this.playerTrace.length - 1];
+    } else {
+      end = this.levelConfig.human;
+    }
+    const END = end;
+
+    this.human = new Human(
+      this,
+      END.x,
+      END.y,
+    );
     this.human.setAlpha(0.6);
 
-    this.dog = new Dog(this, START.x, START.y, this.levelConfig.dog);
+    this.dog = new Dog(
+      this,
+      START.x,
+      START.y,
+      this.levelConfig.dog,
+    );
   }
 
   /**
@@ -84,21 +158,33 @@ export class CorrectionScene extends Phaser.Scene {
   _playDogTrace(onComplete) {
     const POINTS = this.playerTrace;
     const DISTANCES = [0];
-    for (let i = 1; i < POINTS.length; i++) {
-      DISTANCES.push(DISTANCES[i - 1] + Phaser.Math.Distance.Between(
-        POINTS[i - 1].x, POINTS[i - 1].y, POINTS[i].x, POINTS[i].y,
+    for (let pointIndex = 1; pointIndex < POINTS.length; pointIndex++) {
+      DISTANCES.push(DISTANCES[pointIndex - 1] + Phaser.Math.Distance.Between(
+        POINTS[pointIndex - 1].x,
+        POINTS[pointIndex - 1].y,
+        POINTS[pointIndex].x,
+        POINTS[pointIndex].y,
       ));
     };
     const TOTAL_DISTANCE = DISTANCES[DISTANCES.length - 1];
     const DOG_SPEED = 200;
 
-    const PROGRESS = { value: 0 };
+    const PROGRESS = {
+      value: 0,
+    };
     this.tweens.add({
       targets: PROGRESS,
       value: 1,
       duration: (TOTAL_DISTANCE / DOG_SPEED) * 1000,
       ease: 'Linear',
-      onUpdate: () => this._moveDogAlong(POINTS, DISTANCES, TOTAL_DISTANCE, PROGRESS.value),
+      onUpdate: () => {
+        this._moveDogAlong(
+          POINTS,
+          DISTANCES,
+          TOTAL_DISTANCE,
+          PROGRESS.value,
+        );
+      },
       onComplete,
     });
   }
@@ -112,7 +198,12 @@ export class CorrectionScene extends Phaser.Scene {
    * @param {number} progress
    * @return {void}
    */
-  _moveDogAlong(points, distances, totalDistance, progress) {
+  _moveDogAlong(
+    points,
+    distances,
+    totalDistance,
+    progress,
+  ) {
     const TARGET_DISTANCE = totalDistance * progress;
 
     let index = 0;
@@ -121,12 +212,28 @@ export class CorrectionScene extends Phaser.Scene {
     };
 
     const SEGMENT_START = points[index];
-    const SEGMENT_END = points[index + 1] ?? SEGMENT_START;
+
+    let segmentEnd;
+    if (points[index + 1] !== undefined && points[index + 1] !== null) {
+      segmentEnd = points[index + 1];
+    } else {
+      segmentEnd = SEGMENT_START;
+    }
+    const SEGMENT_END = segmentEnd;
+
     const SEGMENT_LENGTH = distances[index + 1] - distances[index] || 1;
     const SEGMENT_PROGRESS = (TARGET_DISTANCE - distances[index]) / SEGMENT_LENGTH;
 
-    const X = Phaser.Math.Linear(SEGMENT_START.x, SEGMENT_END.x, SEGMENT_PROGRESS);
-    const Y = Phaser.Math.Linear(SEGMENT_START.y, SEGMENT_END.y, SEGMENT_PROGRESS);
+    const X = Phaser.Math.Linear(
+      SEGMENT_START.x,
+      SEGMENT_END.x,
+      SEGMENT_PROGRESS,
+    );
+    const Y = Phaser.Math.Linear(
+      SEGMENT_START.y,
+      SEGMENT_END.y,
+      SEGMENT_PROGRESS,
+    );
 
     if (X < this.dog.x) {
       this.dog.setFlipX(true);
@@ -134,7 +241,10 @@ export class CorrectionScene extends Phaser.Scene {
       this.dog.setFlipX(false);
     };
 
-    this.dog.setPosition(X, Y);
+    this.dog.setPosition(
+      X,
+      Y,
+    );
   }
 
   /**
@@ -144,46 +254,92 @@ export class CorrectionScene extends Phaser.Scene {
    * @return {void}
    */
   _showResult(success) {
-    const TITLE = success
-      ? 'Bravo, le chien a réussi à retrouver l\'humain caché grâce à un tracé qui correspond au chien !'
-      : `Oups, le tracé comprend ${this.redFlags.map((flag) => flag.message).join(' ')} donc le chien n'a pas réussi à trouver l'humain.`;
-    const COLOR = success ? STYLECONFIG.END_SCENE_SUCCESS_COLOR : STYLECONFIG.END_SCENE_FAIL_COLOR;
+    let title;
+    if (success) {
+      title = 'Bravo, le chien a réussi à retrouver l\'humain caché grâce à un tracé qui correspond au chien !';
+    } else {
+      title = `Oups, le tracé comprend ${this.redFlags.map((flag) => flag.message).join(' ')} donc le chien n'a pas réussi à trouver l'humain.`;
+    }
+    const TITLE = title;
 
-    const CONTAINER = this.add.container(0, 0);
+    let color;
+    if (success) {
+      color = STYLE_CONFIGURATION.END_SCENE_SUCCESS_COLOR;
+    } else {
+      color = STYLE_CONFIGURATION.END_SCENE_FAIL_COLOR;
+    }
+    const COLOR = color;
 
-    const TITLE_TEXT = this.add.text(this.scale.width / 2, this.scale.height - 150, TITLE, {
-      fontSize: STYLECONFIG.MAIN_MESSAGE_FONT_SIZE,
-      fontFamily: STYLECONFIG.MAIN_MESSAGE_FONT_FAMILY,
-      color: COLOR,
-      align: 'center',
-      wordWrap: { width: this.scale.width - 80 },
-    }).setOrigin(0.5);
+    const CONTAINER = this.add.container(
+      0,
+      0,
+    );
+
+    const TITLE_TEXT = this.add.text(
+      this.scale.width / 2,
+      this.scale.height - 150,
+      TITLE,
+      {
+        fontSize: STYLE_CONFIGURATION.MAIN_MESSAGE_FONT_SIZE,
+        fontFamily: STYLE_CONFIGURATION.MAIN_MESSAGE_FONT_FAMILY,
+        color: COLOR,
+        align: 'center',
+        wordWrap: {
+          width: this.scale.width - 80,
+        },
+      },
+    ).setOrigin(0.5);
     CONTAINER.add(TITLE_TEXT);
 
     const BUTTON_Y = this.scale.height - 70;
     const BUTTONS = [];
 
-    BUTTONS.push(this._createButton(0, BUTTON_Y, 'Recommencer', () => {
-      this.scene.start(SCENE_KEYS.MAP, { level: this.levelNumber });
-    }));
+    BUTTONS.push(this._createButton(
+      0,
+      BUTTON_Y,
+      'Recommencer',
+      () => {
+        this.scene.start(SCENE_KEYS.MAP, {
+          level: this.levelNumber,
+        });
+      },
+    ));
 
-    BUTTONS.push(this._createButton(0, BUTTON_Y, 'Voir la solution', () => {
-      this.scene.start(SCENE_KEYS.SOLUTION, {
-        level: this.levelNumber,
-        environment: this.environment,
-        solution: this.solution,
-      });
-    }));
+    BUTTONS.push(this._createButton(
+      0,
+      BUTTON_Y,
+      'Voir la solution',
+      () => {
+        this.scene.start(SCENE_KEYS.SOLUTION, {
+          level: this.levelNumber,
+          environment: this.environment,
+          solution: this.solution,
+        });
+      },
+    ));
 
     if (success) {
-      BUTTONS.push(this._createButton(0, BUTTON_Y, 'Chien suivant !', () => {
-        this.scene.start(SCENE_KEYS.COACH, { level: this.levelNumber + 1 });
-      }));
+      BUTTONS.push(this._createButton(
+        0,
+        BUTTON_Y,
+        'Chien suivant !',
+        () => {
+          this.scene.start(SCENE_KEYS.COACH, {
+            level: this.levelNumber + 1,
+          });
+        },
+      ));
     };
 
     const SPACING = (this.scale.width - 40) / BUTTONS.length;
-    BUTTONS.forEach((button, index) => {
-      button.setPosition(40 + SPACING * (index + 0.5), BUTTON_Y);
+    BUTTONS.forEach((
+      button,
+      index,
+    ) => {
+      button.setPosition(
+        40 + SPACING * (index + 0.5),
+        BUTTON_Y,
+      );
       CONTAINER.add(button);
     });
   }
@@ -196,19 +352,38 @@ export class CorrectionScene extends Phaser.Scene {
    * @param {() => void} onClick
    * @return {Phaser.GameObjects.Text}
    */
-  _createButton(x, y, label, onClick) {
-    const BUTTON = this.add.text(x, y, label, {
-      fontSize: STYLECONFIG.RETRY_BUTTON_FONT_SIZE,
-      fontFamily: STYLECONFIG.RETRY_BUTTON_FONT_FAMILY,
-      color: STYLECONFIG.RETRY_BUTTON_FONT_COLOR,
-      fontStyle: STYLECONFIG.RETRY_BUTTON_FONT_STYLE,
-      backgroundColor: LGDT_COLORS.YELLOW,
-      padding: { x: 12, y: 8 },
-      align: 'center',
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+  _createButton(
+    x,
+    y,
+    label,
+    onClick,
+  ) {
+    const BUTTON = this.add.text(
+      x,
+      y,
+      label,
+      {
+        fontSize: STYLE_CONFIGURATION.RETRY_BUTTON_FONT_SIZE,
+        fontFamily: STYLE_CONFIGURATION.RETRY_BUTTON_FONT_FAMILY,
+        color: STYLE_CONFIGURATION.RETRY_BUTTON_FONT_COLOR,
+        fontStyle: STYLE_CONFIGURATION.RETRY_BUTTON_FONT_STYLE,
+        backgroundColor: BRAND_COLORS.YELLOW,
+        padding: {
+          x: 12,
+          y: 8,
+        },
+        align: 'center',
+      },
+    ).setOrigin(0.5).setInteractive({
+      useHandCursor: true,
+    });
 
-    BUTTON.on('pointerover', () => BUTTON.setBackgroundColor(LGDT_COLORS.ORANGE));
-    BUTTON.on('pointerout', () => BUTTON.setBackgroundColor(LGDT_COLORS.YELLOW));
+    BUTTON.on('pointerover', () => {
+      BUTTON.setBackgroundColor(BRAND_COLORS.ORANGE);
+    });
+    BUTTON.on('pointerout', () => {
+      BUTTON.setBackgroundColor(BRAND_COLORS.YELLOW);
+    });
     BUTTON.on('pointerdown', onClick);
 
     return BUTTON;

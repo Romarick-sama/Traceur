@@ -7,10 +7,20 @@ export class Bush extends Phaser.Physics.Arcade.Image {
    * @param {number} y
    * @param {string} [profile.texture=ASSET_KEYS.BUSH]
    */
-  constructor(scene, x, y, texture = ASSET_KEYS.BUSH) {
-    super(scene, x, y, texture);
+  constructor(
+    scene,
+    x,
+    y,
+    texture = ASSET_KEYS.BUSH,
+  ) {
+    super(
+      scene,
+      x,
+      y,
+      texture,
+    );
     scene.add.existing(this);
-    this.setScale(0.1)
+    this.setScale(0.1);
     scene.physics.add.existing(this);
   }
 }

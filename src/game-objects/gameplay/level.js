@@ -28,7 +28,15 @@ export class Level {
    * @param {Array<{type: keyof typeof ENVIRONMENT_CLASSES, x: number, y: number}>} [config.environment]
    * @param {number} [config.targetDistance=0] - minimum trace length expected for this level
    */
-  constructor(scene, { human = null, dog = null, environment = [], targetDistance = 0 } = {}) {
+  constructor(
+    scene,
+    {
+      human = null,
+      dog = null,
+      environment = [],
+      targetDistance = 0,
+    } = {},
+  ) {
     this.scene = scene;
     this.humanConfig = human;
     this.dogConfig = dog;
@@ -63,7 +71,22 @@ export class Level {
     };
 
     const { x, y, texture } = this.humanConfig;
-    this.human = texture ? new Human(this.scene, x, y, texture) : new Human(this.scene, x, y);
+    let human;
+    if (texture) {
+      human = new Human(
+        this.scene,
+        x,
+        y,
+        texture,
+      );
+    } else {
+      human = new Human(
+        this.scene,
+        x,
+        y,
+      );
+    }
+    this.human = human;
   }
 
   /**
@@ -76,7 +99,12 @@ export class Level {
     };
 
     const { x, y, ...profile } = this.dogConfig;
-    this.dog = new Dog(this.scene, x, y, profile);
+    this.dog = new Dog(
+      this.scene,
+      x,
+      y,
+      profile,
+    );
   }
 
   /**
@@ -86,13 +114,21 @@ export class Level {
    * @return {void}
    */
   _createEnvironment() {
-    this.environmentConfig.forEach(({ type, x, y }) => {
+    this.environmentConfig.forEach(({
+      type,
+      x,
+      y,
+    }) => {
       const ENVIRONMENT_CLASS = ENVIRONMENT_CLASSES[type];
       if (!ENVIRONMENT_CLASS) {
         return;
       };
 
-      const OBJECT = new ENVIRONMENT_CLASS(this.scene, x, y);
+      const OBJECT = new ENVIRONMENT_CLASS(
+        this.scene,
+        x,
+        y,
+      );
       OBJECT.type = type;
       this.environment.push(OBJECT);
 
@@ -114,16 +150,23 @@ export class Level {
       return;
     };
 
-    this.scene.physics.add.collider(this.human, this.obstacles);
+    this.scene.physics.add.collider(
+      this.human,
+      this.obstacles,
+    );
 
     this.environment.forEach((object) => {
       if (this.obstacles.contains(object)) {
         return;
       };
 
-      this.scene.physics.add.overlap(this.human, object, () => {
-        this.human.collidedWithGameObject(object);
-      });
+      this.scene.physics.add.overlap(
+        this.human,
+        object,
+        () => {
+          this.human.collidedWithGameObject(object);
+        },
+      );
     });
   }
 
@@ -146,7 +189,9 @@ export class Level {
    * @return {void}
    */
   update(cursors) {
-    this.human?.update(cursors);
+    if (this.human) {
+      this.human.update(cursors);
+    }
   }
 
   /**
@@ -164,9 +209,13 @@ export class Level {
    * @return {void}
    */
   destroy() {
-    this.human?.trace.destroy();
-    this.human?.destroy();
-    this.dog?.destroy();
+    if (this.human) {
+      this.human.trace.destroy();
+      this.human.destroy();
+    }
+    if (this.dog) {
+      this.dog.destroy();
+    }
     this.environment.forEach((object) => object.destroy());
     this.environment = [];
     this.obstacles.clear(true, true);

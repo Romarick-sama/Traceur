@@ -5,19 +5,47 @@
  */
 export const LEVELS_DATA = {
   1: {
-    human: { x: 400, y: 300 },
-    dog: { x: 560, y: 300, prenom: 'Nomade' },
+    human: {
+      x: 400,
+      y: 300,
+    },
+    dog: {
+      x: 560,
+      y: 300,
+      prenom: 'Nomade',
+    },
     environment: [
-      { type: 'BUSH', x: 240, y: 300 },
-      { type: 'THORN_BUSH', x: 560, y: 140 },
-      { type: 'TREE', x: 240, y: 140 },
+      {
+        type: 'BUSH',
+        x: 240,
+        y: 300,
+      },
+      {
+        type: 'THORN_BUSH',
+        x: 560,
+        y: 140,
+      },
+      {
+        type: 'TREE',
+        x: 240,
+        y: 140,
+      },
     ],
     targetDistance: 300,
     solution: {
       waypoints: [
-        { x: 400, y: 300 },
-        { x: 400, y: 460 },
-        { x: 600, y: 460 },
+        {
+          x: 400,
+          y: 300,
+        },
+        {
+          x: 400,
+          y: 460,
+        },
+        {
+          x: 600,
+          y: 460,
+        },
       ],
       explanations: [
         'Pars depuis ton point de départ.',
@@ -34,5 +62,11 @@ export const LEVELS_DATA = {
  * @return {object}
  */
 export function getLevelConfig(levelNumber) {
-  return LEVELS_DATA[levelNumber] ?? LEVELS_DATA[1];
+  let levelConfig;
+  if (LEVELS_DATA[levelNumber] !== undefined && LEVELS_DATA[levelNumber] !== null) {
+    levelConfig = LEVELS_DATA[levelNumber];
+  } else {
+    levelConfig = LEVELS_DATA[1];
+  }
+  return levelConfig;
 }

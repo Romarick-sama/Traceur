@@ -10,7 +10,15 @@ export class Trace {
    * @param {number} [options.color=0xff9060] - line color
    * @param {number} [options.lineWidth=2] - line width
    */
-  constructor(scene, { minDistance = 8, maxPoints = 5000, color = 0xff9060, lineWidth = 10 } = {}) {
+  constructor(
+    scene,
+    {
+      minDistance = 8,
+      maxPoints = 5000,
+      color = 0xff9060,
+      lineWidth = 10,
+    } = {},
+  ) {
     this.scene = scene;
     this.minDistance = minDistance;
     this.maxPoints = maxPoints;
@@ -26,16 +34,27 @@ export class Trace {
    * @param {number} y
    * @return {void}
    */
-  addPoint(x, y) {
+  addPoint(
+    x,
+    y,
+  ) {
     const LAST = this.points[this.points.length - 1];
     if (LAST) {
-      const DIST = Phaser.Math.Distance.Between(LAST.x, LAST.y, x, y);
+      const DIST = Phaser.Math.Distance.Between(
+        LAST.x,
+        LAST.y,
+        x,
+        y,
+      );
       if (DIST < this.minDistance) {
         return;
       };
     };
 
-    this.points.push({ x, y });
+    this.points.push({
+      x,
+      y,
+    });
     if (this.points.length > this.maxPoints) {
       this.points.shift();
     };
@@ -52,11 +71,21 @@ export class Trace {
       return;
     };
 
-    this.graphics.lineStyle(this.lineWidth, this.color, 1);
+    this.graphics.lineStyle(
+      this.lineWidth,
+      this.color,
+      1,
+    );
     this.graphics.beginPath();
-    this.graphics.moveTo(this.points[0].x, this.points[0].y);
+    this.graphics.moveTo(
+      this.points[0].x,
+      this.points[0].y,
+    );
     for (let i = 1; i < this.points.length; i++) {
-      this.graphics.lineTo(this.points[i].x, this.points[i].y);
+      this.graphics.lineTo(
+        this.points[i].x,
+        this.points[i].y,
+      );
     };
     this.graphics.strokePath();
   }
