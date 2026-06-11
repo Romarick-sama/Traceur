@@ -2,7 +2,7 @@ import { STYLECONFIG } from './common/style-config.js';
 import { PreloadScene } from './scenes/preload-scene.js';
 import { IntroScene } from './scenes/intro-scene.js';
 import { LevelChoiceScene } from './scenes/level-choice-scene.js';
-import { GameScene } from './scenes/game-scene.js';
+import { MapScene } from './scenes/map-scene.js';
 
 const CONFIG = {
   type: Phaser.AUTO,
@@ -20,7 +20,7 @@ const CONFIG = {
       debug: false,
     },
   },
-  scene: [PreloadScene, IntroScene, LevelChoiceScene, GameScene],
+  scene: [PreloadScene, IntroScene, LevelChoiceScene, MapScene],
 };
 
 new Phaser.Game(CONFIG);

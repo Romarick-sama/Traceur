@@ -24,6 +24,6 @@ export class LevelChoiceScene extends Phaser.Scene {
       padding: { x: 16, y: 8 },
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
-    PLAY_BUTTON.on('pointerdown', () => this.scene.start(SCENE_KEYS.GAME, { level: 1 }));
+    PLAY_BUTTON.on('pointerdown', () => this.scene.start(SCENE_KEYS.MAP, { level: 1 }));
   }
 }
