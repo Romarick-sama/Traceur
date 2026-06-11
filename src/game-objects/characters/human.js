@@ -22,6 +22,17 @@ export class Human extends Phaser.Physics.Arcade.Sprite {
     this.setCollideWorldBounds(true);
     this.speed = speed;
     this.trace = new Trace(scene);
+    this.collidedObjects = new Set();
+  }
+
+  /**
+   * Records an environment object the human has touched or passed through,
+   * kept for the whole level (used to check for red flags at correction time).
+   * @param {object} gameObject
+   * @return {void}
+   */
+  collidedWithGameObject(gameObject) {
+    this.collidedObjects.add(gameObject);
   }
 
   /**

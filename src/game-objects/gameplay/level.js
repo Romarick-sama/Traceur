@@ -3,6 +3,7 @@ import { Dog } from '../characters/dog.js';
 import { Bush } from '../environment/bush.js';
 import { ThornBush } from '../environment/thorn-bush.js';
 import { Tree } from '../environment/tree.js';
+import { getRedFlags } from './red-flag.js';
 
 /**
  * Maps environment layout types to their game-object class.
@@ -92,6 +93,7 @@ export class Level {
       };
 
       const OBJECT = new ENVIRONMENT_CLASS(this.scene, x, y);
+      OBJECT.type = type;
       this.environment.push(OBJECT);
 
       if (ENVIRONMENT_CLASS !== Bush) {
@@ -102,7 +104,9 @@ export class Level {
 
   /**
    * Sets up the collider between the human and the non-traversable
-   * environment objects (trees, thorn bushes).
+   * environment objects (trees, thorn bushes), and an overlap with the
+   * traversable ones (eg. bushes) so they are recorded even if the human
+   * walks straight through them.
    * @return {void}
    */
   _setupColliders() {
@@ -111,6 +115,29 @@ export class Level {
     };
 
     this.scene.physics.add.collider(this.human, this.obstacles);
+
+    this.environment.forEach((object) => {
+      if (this.obstacles.contains(object)) {
+        return;
+      };
+
+      this.scene.physics.add.overlap(this.human, object, () => {
+        this.human.collidedWithGameObject(object);
+      });
+    });
+  }
+
+  /**
+   * Returns the red flags triggered by the objects the human has touched
+   * or passed through during the level.
+   * @return {Array<{id: string, message: string}>}
+   */
+  getRedFlags() {
+    if (!this.human) {
+      return [];
+    };
+
+    return getRedFlags(this.human.collidedObjects);
   }
 
   /**

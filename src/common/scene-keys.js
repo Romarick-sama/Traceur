@@ -5,5 +5,6 @@ export const SCENE_KEYS = {
   MAP: 'MAP',
   COACH: 'COACH',
   CORRECTION: 'CORRECTION',
+  SOLUTION: 'SOLUTION',
   END: 'END',
 };
