@@ -13,6 +13,9 @@ export class Human extends Phaser.Physics.Arcade.Sprite {
    * @param {number} y
    * @param {string} [texture=ASSET_KEYS.HUMAN]
    * @param {number} [speed=160] - movement speed in pixels per second
+   * @param {boolean} [collideWorldBounds=true] - whether to clamp the human
+   * to the scene bounds (disabled by the map scene, which handles its own
+   * room-edge transitions)
    */
   constructor(
     scene,
@@ -20,6 +23,7 @@ export class Human extends Phaser.Physics.Arcade.Sprite {
     y,
     texture = ASSET_KEYS.HUMAN,
     speed = 160,
+    collideWorldBounds = true,
   ) {
     super(
       scene,
@@ -30,7 +34,7 @@ export class Human extends Phaser.Physics.Arcade.Sprite {
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
-    this.setCollideWorldBounds(true);
+    this.setCollideWorldBounds(collideWorldBounds);
     this.speed = speed;
     this.trace = new Trace(scene);
     this.collidedObjects = new Set();

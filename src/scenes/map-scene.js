@@ -1,8 +1,19 @@
-import { STYLE_CONFIGURATION, BRAND_COLORS } from '../common/style-config.js';
+import { STYLE_CONFIGURATION } from '../common/style-config.js';
 import { SCENE_KEYS } from '../common/scene-keys.js';
-import { Level } from '../game-objects/gameplay/level.js';
+import { ASSET_KEYS } from '../common/asset-keys.js';
+import { Human } from '../game-objects/characters/human.js';
+import { RoomStage } from '../game-objects/gameplay/room-stage.js';
+import {
+  generateMap,
+  ROOM_WIDTH,
+  ROOM_HEIGHT,
+  MAP_COLS,
+  MAP_ROWS,
+} from '../game-objects/gameplay/map.js';
 import { getLevelConfig } from '../data/levels-data.js';
-import { generateLevel } from '../game-objects/gameplay/environment-generator.js';
+
+const TRACE_MIN_DISTANCE = 8;
+const ROOM_TRANSITION_FLASH_DURATION = 120;
 
 export class MapScene extends Phaser.Scene {
   constructor() {
@@ -37,7 +48,7 @@ export class MapScene extends Phaser.Scene {
 
   /**
    * Displays a "level generation in progress" message while the random
-   * environment is computed.
+   * map is computed.
    * @return {void}
    */
   _showLoading() {
@@ -54,31 +65,135 @@ export class MapScene extends Phaser.Scene {
   }
 
   /**
-   * Generates a random, finishable environment layout, builds the level
-   * (without the dog, which only appears during the correction) and sets
-   * up the controls and UI.
+   * Generates a random, finishable map (a grid of rooms with continuous
+   * obstacles), builds the starting room, places the human and sets up the
+   * controls and UI.
    * @return {void}
    */
   _buildLevel() {
-    const GENERATED = generateLevel(this.levelConfig);
-    this.generatedEnvironment = GENERATED.environment;
-    this.generatedSolution = GENERATED.solution;
+    this.mapData = generateMap(this.levelConfig);
 
     this.loadingText.destroy();
 
-    this.level = new Level(
-      this,
-      {
-        ...this.levelConfig,
-        environment: this.generatedEnvironment,
-        dog: null,
-      },
+    this.roomStage = new RoomStage(this, this.mapData);
+    this.roomStage.setRoom(
+      this.mapData.startRoom.col,
+      this.mapData.startRoom.row,
     );
-    this.level.create();
+
+    this.human = new Human(
+      this,
+      this.mapData.startLocal.x,
+      this.mapData.startLocal.y,
+      ASSET_KEYS.HUMAN,
+      160,
+      false,
+    );
+    this.roomStage.level.setupCollidersFor(this.human);
+
+    this.globalTrace = [];
+    this._recordTracePoint();
 
     this.cursors = this.input.keyboard.createCursorKeys();
 
     this._createHideButton();
+  }
+
+  /**
+   * Records the human's current global position in the trace if it is far
+   * enough from the last recorded point.
+   * @return {void}
+   */
+  _recordTracePoint() {
+    const ROOM = this.roomStage.currentRoom;
+    const GLOBAL_X = ROOM.col * ROOM_WIDTH + this.human.x;
+    const GLOBAL_Y = ROOM.row * ROOM_HEIGHT + this.human.y;
+
+    const LAST = this.globalTrace[this.globalTrace.length - 1];
+    if (LAST) {
+      const DIST = Phaser.Math.Distance.Between(
+        LAST.x,
+        LAST.y,
+        GLOBAL_X,
+        GLOBAL_Y,
+      );
+      if (DIST < TRACE_MIN_DISTANCE) {
+        return;
+      };
+    };
+
+    this.globalTrace.push({
+      x: GLOBAL_X,
+      y: GLOBAL_Y,
+    });
+  }
+
+  /**
+   * Checks whether the human has walked off one of the room's edges and, if
+   * so, either switches to the neighboring room (repositioning the human on
+   * the opposite edge) or clamps the human back inside the room when there
+   * is no room in that direction (outer wall of the map).
+   * @return {void}
+   */
+  _checkRoomTransition() {
+    const ROOM = this.roomStage.currentRoom;
+    let targetCol = ROOM.col;
+    let targetRow = ROOM.row;
+
+    if (this.human.x < 0) {
+      targetCol -= 1;
+    } else if (this.human.x > ROOM_WIDTH) {
+      targetCol += 1;
+    };
+
+    if (this.human.y < 0) {
+      targetRow -= 1;
+    } else if (this.human.y > ROOM_HEIGHT) {
+      targetRow += 1;
+    };
+
+    if (targetCol === ROOM.col && targetRow === ROOM.row) {
+      return;
+    };
+
+    if (targetCol < 0 || targetCol >= MAP_COLS || targetRow < 0 || targetRow >= MAP_ROWS) {
+      this.human.x = Phaser.Math.Clamp(
+        this.human.x,
+        0,
+        ROOM_WIDTH,
+      );
+      this.human.y = Phaser.Math.Clamp(
+        this.human.y,
+        0,
+        ROOM_HEIGHT,
+      );
+      return;
+    };
+
+    if (this.human.x < 0) {
+      this.human.x = ROOM_WIDTH;
+    } else if (this.human.x > ROOM_WIDTH) {
+      this.human.x = 0;
+    };
+
+    if (this.human.y < 0) {
+      this.human.y = ROOM_HEIGHT;
+    } else if (this.human.y > ROOM_HEIGHT) {
+      this.human.y = 0;
+    };
+
+    this.roomStage.setRoom(
+      targetCol,
+      targetRow,
+    );
+    this.roomStage.level.setupCollidersFor(this.human);
+    this.human.trace.clear();
+    this.cameras.main.flash(
+      ROOM_TRANSITION_FLASH_DURATION,
+      0,
+      0,
+      0,
+    );
   }
 
   /**
@@ -121,30 +236,27 @@ export class MapScene extends Phaser.Scene {
   }
 
   /**
-   * Stops the level and starts the correction scene with the player's trace.
+   * Stops the level and starts the correction scene with the player's
+   * (multi-room) trace.
    * @return {void}
    */
   _goToCorrection() {
-    let tracePoints;
-    if (this.level.human && this.level.human.trace.points !== undefined && this.level.human.trace.points !== null) {
-      tracePoints = this.level.human.trace.points;
-    } else {
-      tracePoints = [];
-    }
-    const TRACE_POINTS = tracePoints;
-
     this.scene.start(SCENE_KEYS.CORRECTION, {
       level: this.levelNumber,
-      trace: TRACE_POINTS,
-      redFlags: this.level.getRedFlags(),
-      environment: this.generatedEnvironment,
-      solution: this.generatedSolution,
+      trace: this.globalTrace,
+      redFlags: this.roomStage.level.getRedFlags(),
+      environment: this.mapData,
+      solution: this.mapData.solution,
     });
   }
 
   update() {
-    if (this.level) {
-      this.level.update(this.cursors);
+    if (!this.human) {
+      return;
     };
+
+    this.human.update(this.cursors);
+    this._checkRoomTransition();
+    this._recordTracePoint();
   }
 }

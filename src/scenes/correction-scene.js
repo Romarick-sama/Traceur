@@ -1,13 +1,14 @@
 import { STYLE_CONFIGURATION, BRAND_COLORS } from '../common/style-config.js';
 import { SCENE_KEYS } from '../common/scene-keys.js';
-import { Level } from '../game-objects/gameplay/level.js';
 import { Dog } from '../game-objects/characters/dog.js';
 import { Human } from '../game-objects/characters/human.js';
+import { RoomStage } from '../game-objects/gameplay/room-stage.js';
+import { globalToRoom, globalToLocal } from '../game-objects/gameplay/map.js';
 import { getLevelConfig } from '../data/levels-data.js';
 
 /**
  * Replays the player's trace with the dog: the dog starts where the human
- * started and follows the recorded trace.
+ * started and follows the recorded (multi-room) trace.
  */
 export class CorrectionScene extends Phaser.Scene {
   constructor() {
@@ -39,11 +40,11 @@ export class CorrectionScene extends Phaser.Scene {
     }
     this.redFlags = redFlags;
 
-    let environment;
+    let mapData;
     if (data) {
-      environment = data.environment;
+      mapData = data.environment;
     }
-    this.environment = environment;
+    this.mapData = mapData;
 
     let solution;
     if (data) {
@@ -56,22 +57,23 @@ export class CorrectionScene extends Phaser.Scene {
     this.levelConfig = getLevelConfig(this.levelNumber);
     this.cameras.main.setBackgroundColor(STYLE_CONFIGURATION.MAIN_BACKGROUND_COLOR);
 
-    let environment;
-    if (this.environment !== undefined && this.environment !== null) {
-      environment = this.environment;
+    let mapData;
+    if (this.mapData !== undefined && this.mapData !== null) {
+      mapData = this.mapData;
     } else {
-      environment = this.levelConfig.environment;
+      mapData = {
+        startRoom: {
+          col: 0,
+          row: 0,
+        },
+        rooms: new Map([['0,0', this.levelConfig.environment]]),
+      };
     }
+    this.mapData = mapData;
 
-    this.level = new Level(
-      this,
-      {
-        environment: environment,
-      },
-    );
-    this.level.create();
+    this.roomStage = new RoomStage(this, this.mapData);
+    this.traceGraphics = this.add.graphics();
 
-    this._drawPlayerTrace();
     this._createActors();
 
     if (this.redFlags.length > 0 || this.playerTrace.length < 2) {
@@ -85,38 +87,132 @@ export class CorrectionScene extends Phaser.Scene {
   }
 
   /**
-   * Draws the player's recorded trace as a faint reference line.
-   * @return {void}
+   * The _localPointForRoom function converts a global point to a local point within a specified room.
+   * @param point - The `point` parameter represents a coordinate point in a global coordinate system.
+   * @param room - The `room` parameter in the `_localPointForRoom` function represents a specific room
+   * in a grid system. It likely contains information about the column (`col`) and row (`row`) of the
+   * room within the grid.
+   * @returns If the `POINT_ROOM` column and row do not match the `room` column and row, `null` is
+   * being returned. Otherwise, the result of `globalToLocal(point.x, point.y)` is being returned.
+   */
+  _localPointForRoom(
+    point,
+    room,
+  ) {
+    const POINT_ROOM = globalToRoom(
+      point.x,
+      point.y,
+    );
+    if (POINT_ROOM.col !== room.col || POINT_ROOM.row !== room.row) {
+      return null;
+    };
+
+    return globalToLocal(
+      point.x,
+      point.y,
+    );
+  }
+
+  /**
+   * The function _drawPlayerTrace() draws a trace line connecting points in the playerTrace array on a
+   * graphics object in a game room.
+   * @returns If the `this.playerTrace` array has less than 2 points or if after converting the points
+   * to local coordinates there are less than 2 valid points, then the function will return early
+   * without drawing anything. If the conditions are met and the trace is successfully drawn, then
+   * nothing is explicitly returned from the function (implicitly `undefined` is returned).
    */
   _drawPlayerTrace() {
-    const GRAPHICS = this.add.graphics();
+    this.traceGraphics.clear();
     if (this.playerTrace.length < 2) {
       return;
     };
 
-    GRAPHICS.lineStyle(
+    const ROOM = this.roomStage.currentRoom;
+    const LOCAL_POINTS = this.playerTrace
+      .map((point) => this._localPointForRoom(point, ROOM))
+      .filter((point) => point !== null);
+
+    if (LOCAL_POINTS.length < 2) {
+      return;
+    };
+
+    this.traceGraphics.lineStyle(
       4,
       0xffffff,
       0.25,
     );
-    GRAPHICS.beginPath();
-    GRAPHICS.moveTo(
-      this.playerTrace[0].x,
-      this.playerTrace[0].y,
+    this.traceGraphics.beginPath();
+    this.traceGraphics.moveTo(
+      LOCAL_POINTS[0].x,
+      LOCAL_POINTS[0].y,
     );
-    for (let pointIndex = 1; pointIndex < this.playerTrace.length; pointIndex++) {
-      GRAPHICS.lineTo(
-        this.playerTrace[pointIndex].x,
-        this.playerTrace[pointIndex].y,
+    for (let pointIndex = 1; pointIndex < LOCAL_POINTS.length; pointIndex++) {
+      this.traceGraphics.lineTo(
+        LOCAL_POINTS[pointIndex].x,
+        LOCAL_POINTS[pointIndex].y,
       );
     };
-    GRAPHICS.strokePath();
+    this.traceGraphics.strokePath();
   }
 
   /**
-   * Places the dog at the human's starting position and the (hidden) human
-   * at the end of the player's trace.
-   * @return {void}
+   * The _showRoom function sets the room stage, draws the player trace, and synchronizes the ghost and
+   * human elements.
+   * @param room - The `room` parameter seems to represent a room object with properties `col` and
+   * `row`. The `showRoom` function sets the room stage with the specified column and row values from
+   * the `room` object, draws the player trace, and synchronizes the ghost and human elements.
+   */
+  _showRoom(room) {
+    this.roomStage.setRoom(
+      room.col,
+      room.row,
+    );
+    this._drawPlayerTrace();
+    this._syncGhostHuman();
+  }
+
+  /**
+   * The _syncGhostHuman function creates or updates a Human object based on the position of a
+   * ghostGlobal object within a room.
+   * @returns If the `ghostGlobal` property is falsy, the function will return early without performing
+   * any further actions. If the local point for the ghostGlobal in the current room is not found
+   * (`LOCAL` is falsy), and there is an existing `ghostHuman`, it will be destroyed and set to null
+   * before returning. Otherwise, if `ghostHuman` doesn't exist, a new `Human`
+   */
+  _syncGhostHuman() {
+    if (!this.ghostGlobal) {
+      return;
+    };
+
+    const ROOM = this.roomStage.currentRoom;
+    const LOCAL = this._localPointForRoom(this.ghostGlobal, ROOM);
+
+    if (!LOCAL) {
+      if (this.ghostHuman) {
+        this.ghostHuman.destroy();
+        this.ghostHuman = null;
+      };
+      return;
+    };
+
+    if (!this.ghostHuman) {
+      this.ghostHuman = new Human(
+        this,
+        LOCAL.x,
+        LOCAL.y,
+      );
+      this.ghostHuman.setAlpha(0.6);
+    } else {
+      this.ghostHuman.setPosition(
+        LOCAL.x,
+        LOCAL.y,
+      );
+    };
+  }
+
+  /**
+   * The function `_createActors` initializes actors in a game, such as a player character and a dog,
+   * based on certain conditions and configurations.
    */
   _createActors() {
     let start;
@@ -133,25 +229,29 @@ export class CorrectionScene extends Phaser.Scene {
     } else {
       end = this.levelConfig.human;
     }
-    const END = end;
+    this.ghostGlobal = end;
 
-    this.human = new Human(
-      this,
-      END.x,
-      END.y,
+    const START_ROOM = globalToRoom(
+      START.x,
+      START.y,
     );
-    this.human.setAlpha(0.6);
+    const START_LOCAL = globalToLocal(
+      START.x,
+      START.y,
+    );
+
+    this._showRoom(START_ROOM);
 
     this.dog = new Dog(
       this,
-      START.x,
-      START.y,
+      START_LOCAL.x,
+      START_LOCAL.y,
       this.levelConfig.dog,
     );
   }
 
   /**
-   * Animates the dog along the player's trace.
+   * Animates the dog along the player's (multi-room) trace.
    * @param {() => void} onComplete
    * @return {void}
    */
@@ -191,7 +291,8 @@ export class CorrectionScene extends Phaser.Scene {
 
   /**
    * Positions the dog at the point of the trace corresponding to the given
-   * progress (0 to 1), and flips it to face its movement direction.
+   * progress (0 to 1), switching rooms if needed, and flips it to face its
+   * movement direction.
    * @param {Array<{x: number, y: number}>} points
    * @param {number[]} distances
    * @param {number} totalDistance
@@ -224,26 +325,39 @@ export class CorrectionScene extends Phaser.Scene {
     const SEGMENT_LENGTH = distances[index + 1] - distances[index] || 1;
     const SEGMENT_PROGRESS = (TARGET_DISTANCE - distances[index]) / SEGMENT_LENGTH;
 
-    const X = Phaser.Math.Linear(
+    const GLOBAL_X = Phaser.Math.Linear(
       SEGMENT_START.x,
       SEGMENT_END.x,
       SEGMENT_PROGRESS,
     );
-    const Y = Phaser.Math.Linear(
+    const GLOBAL_Y = Phaser.Math.Linear(
       SEGMENT_START.y,
       SEGMENT_END.y,
       SEGMENT_PROGRESS,
     );
 
-    if (X < this.dog.x) {
+    const ROOM = globalToRoom(
+      GLOBAL_X,
+      GLOBAL_Y,
+    );
+    if (ROOM.col !== this.roomStage.currentRoom.col || ROOM.row !== this.roomStage.currentRoom.row) {
+      this._showRoom(ROOM);
+    };
+
+    const LOCAL = globalToLocal(
+      GLOBAL_X,
+      GLOBAL_Y,
+    );
+
+    if (LOCAL.x < this.dog.x) {
       this.dog.setFlipX(true);
-    } else if (X > this.dog.x) {
+    } else if (LOCAL.x > this.dog.x) {
       this.dog.setFlipX(false);
     };
 
     this.dog.setPosition(
-      X,
-      Y,
+      LOCAL.x,
+      LOCAL.y,
     );
   }
 
@@ -312,7 +426,7 @@ export class CorrectionScene extends Phaser.Scene {
       () => {
         this.scene.start(SCENE_KEYS.SOLUTION, {
           level: this.levelNumber,
-          environment: this.environment,
+          environment: this.mapData,
           solution: this.solution,
         });
       },

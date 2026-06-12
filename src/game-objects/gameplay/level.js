@@ -150,8 +150,19 @@ export class Level {
       return;
     };
 
+    this.setupCollidersFor(this.human);
+  }
+
+  /**
+   * Sets up the collider/overlap between the given human and this level's
+   * environment objects. Used both for the level's own human and for an
+   * externally-managed, persistent human (eg. across room transitions).
+   * @param {Human} human
+   * @return {void}
+   */
+  setupCollidersFor(human) {
     this.scene.physics.add.collider(
-      this.human,
+      human,
       this.obstacles,
     );
 
@@ -161,10 +172,10 @@ export class Level {
       };
 
       this.scene.physics.add.overlap(
-        this.human,
+        human,
         object,
         () => {
-          this.human.collidedWithGameObject(object);
+          human.collidedWithGameObject(object);
         },
       );
     });
