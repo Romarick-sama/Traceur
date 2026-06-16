@@ -21,6 +21,6 @@ export class Tree extends Phaser.Physics.Arcade.Image {
     );
     this.setScale(0.15);
     scene.add.existing(this);
-    scene.physics.add.existing(this);
+    scene.physics.add.existing(this, true);
   }
 }

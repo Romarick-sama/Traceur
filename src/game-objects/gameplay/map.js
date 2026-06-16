@@ -11,12 +11,14 @@ export const MAP_ROWS = 5;
 const TOTAL_COLS = ROOM_COLS * MAP_COLS;
 const TOTAL_ROWS = ROOM_ROWS * MAP_ROWS;
 
-const OBSTACLE_TYPES = ['TREE', 'THORN_BUSH', 'BUSH'];
 const BLOCKING_TYPES = ['TREE', 'THORN_BUSH'];
 
-const OBSTACLE_DENSITY = 0.12;
 const MIN_HIDE_DISTANCE = 15;
 const MAX_ATTEMPTS = 100;
+const INITIAL_FILL_RATE = 0.22;
+const CA_ITERATIONS = 2;
+const CA_SURVIVAL_THRESHOLD = 0;
+const CA_BIRTH_THRESHOLD = 3;
 
 const EXPLANATIONS = {
   FIRST: 'Pars depuis ton point de départ.',
@@ -357,6 +359,109 @@ function simplifyPath(path) {
 
 
 /**
+ * Fills the grid randomly then smooths it with a cellular automaton to
+ * produce natural-looking obstacle clusters instead of uniform noise.
+ * Cells with fewer neighbors than CA_SURVIVAL_THRESHOLD are pruned;
+ * empty cells with enough filled neighbors grow to fill in gaps.
+ * @param {string} startKey - cell key that must remain free
+ * @return {Set<string>} set of obstacle cell keys
+ */
+function generateClusteredGrid(startKey) {
+  const grid = new Set();
+
+  for (let col = 0; col < TOTAL_COLS; col++) {
+    for (let row = 0; row < TOTAL_ROWS; row++) {
+      const key = cellKey(col, row);
+      if (key === startKey) {
+        continue;
+      }
+      if (Math.random() < INITIAL_FILL_RATE) {
+        grid.add(key);
+      }
+    }
+  }
+
+  for (let iteration = 0; iteration < CA_ITERATIONS; iteration++) {
+    const nextGrid = new Set();
+
+    for (let col = 0; col < TOTAL_COLS; col++) {
+      for (let row = 0; row < TOTAL_ROWS; row++) {
+        const key = cellKey(col, row);
+        if (key === startKey) {
+          continue;
+        }
+
+        const neighborObstacleCount = neighbors(col, row).filter(([neighborCol, neighborRow]) => {
+          return grid.has(cellKey(neighborCol, neighborRow));
+        }).length;
+
+        if (grid.has(key)) {
+          if (neighborObstacleCount >= CA_SURVIVAL_THRESHOLD) {
+            nextGrid.add(key);
+          }
+        } else {
+          if (neighborObstacleCount >= CA_BIRTH_THRESHOLD) {
+            nextGrid.add(key);
+          }
+        }
+      }
+    }
+
+    grid.clear();
+    nextGrid.forEach((key) => {
+      grid.add(key);
+    });
+  }
+
+  return grid;
+}
+
+/**
+ * Converts a set of obstacle cell keys into typed obstacle objects.
+ * Type is determined by how many obstacle neighbors each cell has:
+ * dense cluster centers become TREE, cluster edges become THORN_BUSH,
+ * isolated cells become BUSH (traversable, not blocking).
+ * @param {Set<string>} grid
+ * @return {{ obstacles: Array, blocked: Set<string> }}
+ */
+function assignObstacleTypes(grid) {
+  const obstacles = [];
+  const blocked = new Set();
+
+  grid.forEach((key) => {
+    const [col, row] = key.split(',').map(Number);
+
+    const neighborObstacleCount = neighbors(col, row).filter(([neighborCol, neighborRow]) => {
+      return grid.has(cellKey(neighborCol, neighborRow));
+    }).length;
+
+    let type;
+    if (neighborObstacleCount >= 3) {
+      type = 'TREE';
+    } else if (neighborObstacleCount >= 1) {
+      type = 'THORN_BUSH';
+    } else {
+      type = 'BUSH';
+    }
+
+    obstacles.push({
+      col,
+      row,
+      type,
+    });
+
+    if (BLOCKING_TYPES.includes(type)) {
+      blocked.add(key);
+    }
+  });
+
+  return {
+    obstacles,
+    blocked,
+  };
+}
+
+/**
  * The function `generateMap` creates a game map with obstacles and a hidden location, along with a
  * solution path for a game level.
  * @param levelConfig - levelConfig is an object containing configuration data for the level, such as
@@ -389,35 +494,13 @@ export function generateMap(levelConfig) {
   );
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    const OBSTACLES = [];
+    const clusteredGrid = generateClusteredGrid(START_KEY);
+    const generatedObstacles = assignObstacleTypes(clusteredGrid);
+    const OBSTACLES = generatedObstacles.obstacles;
     const BLOCKED = new Set([START_KEY]);
-
-    for (let col = 0; col < TOTAL_COLS; col++) {
-      for (let row = 0; row < TOTAL_ROWS; row++) {
-        const KEY = cellKey(
-          col,
-          row,
-        );
-        if (KEY === START_KEY) {
-          continue;
-        };
-
-        if (Math.random() >= OBSTACLE_DENSITY) {
-          continue;
-        };
-
-        const TYPE = Phaser.Utils.Array.GetRandom(OBSTACLE_TYPES);
-        OBSTACLES.push({
-          col,
-          row,
-          type: TYPE,
-        });
-
-        if (BLOCKING_TYPES.includes(TYPE)) {
-          BLOCKED.add(KEY);
-        };
-      };
-    };
+    generatedObstacles.blocked.forEach((key) => {
+      BLOCKED.add(key);
+    });
 
     const VISITED = breadthFirstSearch(
       START_COL,

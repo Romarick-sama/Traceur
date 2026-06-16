@@ -109,8 +109,9 @@ export class Level {
 
   /**
    * Instantiates every environment object described in the layout. Trees
-   * and thorn bushes are added to the obstacles group as they are not
-   * traversable, bushes are not (they can be crossed).
+   * and thorn bushes are created directly through the static obstacles group
+   * (the only pattern that guarantees working collision in Phaser 3.55).
+   * Bushes are not added to obstacles — they can be crossed.
    * @return {void}
    */
   _createEnvironment() {
@@ -122,19 +123,21 @@ export class Level {
       const ENVIRONMENT_CLASS = ENVIRONMENT_CLASSES[type];
       if (!ENVIRONMENT_CLASS) {
         return;
-      };
+      }
 
-      const OBJECT = new ENVIRONMENT_CLASS(
-        this.scene,
-        x,
-        y,
-      );
-      OBJECT.type = type;
-      this.environment.push(OBJECT);
-
-      if (ENVIRONMENT_CLASS !== Bush) {
-        this.obstacles.add(OBJECT);
-      };
+      if (ENVIRONMENT_CLASS === Bush) {
+        const OBJECT = new Bush(this.scene, x, y);
+        OBJECT.type = type;
+        this.environment.push(OBJECT);
+      } else {
+        const textureKey = type.toLowerCase();
+        const OBJECT = this.obstacles.create(x, y, textureKey);
+        if (ENVIRONMENT_CLASS === Tree) {
+          OBJECT.setScale(0.15).refreshBody();
+        }
+        OBJECT.type = type;
+        this.environment.push(OBJECT);
+      }
     });
   }
 
@@ -207,12 +210,11 @@ export class Level {
 
   /**
    * Returns every environment object of the given type.
-   * @param {keyof typeof ENVIRONMENT_CLASSES} type
+   * @param {string} type
    * @return {Phaser.Physics.Arcade.Image[]}
    */
   getEnvironmentByType(type) {
-    const ENVIRONMENT_CLASS = ENVIRONMENT_CLASSES[type];
-    return this.environment.filter((object) => object instanceof ENVIRONMENT_CLASS);
+    return this.environment.filter((object) => object.type === type);
   }
 
   /**
@@ -227,7 +229,11 @@ export class Level {
     if (this.dog) {
       this.dog.destroy();
     }
-    this.environment.forEach((object) => object.destroy());
+    this.environment.forEach((object) => {
+      if (!this.obstacles.contains(object)) {
+        object.destroy();
+      }
+    });
     this.environment = [];
     this.obstacles.clear(true, true);
   }

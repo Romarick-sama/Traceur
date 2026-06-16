@@ -20,7 +20,8 @@ export class Bush extends Phaser.Physics.Arcade.Image {
       texture,
     );
     scene.add.existing(this);
-    this.setScale(0.1);
+    this.setScale(0.3);
     scene.physics.add.existing(this);
+    this.body.setSize(this.displayWidth, this.displayHeight);
   }
 }

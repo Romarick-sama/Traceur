@@ -20,6 +20,6 @@ export class ThornBush extends Phaser.Physics.Arcade.Image {
       texture,
     );
     scene.add.existing(this);
-    scene.physics.add.existing(this);
+    scene.physics.add.existing(this, true);
   }
 }
