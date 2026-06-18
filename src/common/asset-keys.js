@@ -1,5 +1,5 @@
 /**
- * Clés des textures Phaser, à utiliser partout au lieu de chaînes en dur.
+ * Phaser texture keys, use everywhere instead of hardcoded strings.
  */
 export const ASSET_KEYS = {
   HUMAN: 'human',
@@ -12,8 +12,8 @@ export const ASSET_KEYS = {
 };
 
 /**
- * Liste des sprites à charger au PreloadScene.
- * Pour ajouter un sprite : ajouter une entrée { key, path } ici (et la clé correspondante ci-dessus).
+ * List of sprites to load in PreloadScene.
+ * To add a sprite: add an entry { key, path } here (and matching key above).
  */
 export const SPRITE_ASSETS = [
   { key: ASSET_KEYS.HUMAN, path: 'public/assets/images/human.png' },
