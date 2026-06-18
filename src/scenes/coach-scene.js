@@ -57,12 +57,15 @@ export class CoachScene extends Phaser.Scene {
     const CENTER_Y = 110;
     const RADIUS = STYLE_CONFIGURATION.COACH_PORTRAIT_RADIUS;
 
-    this.add.circle(
+    this.circle = this.add.circle(
       CENTER_X,
       CENTER_Y,
       RADIUS + 4,
-      STYLE_CONFIGURATION.COACH_PORTRAIT_BORDER_COLOR,
+      STYLE_CONFIGURATION.COACH_PORTRAIT_INSIDE_COLOR,
     );
+    this.circle.setStrokeStyle(6, 
+      STYLE_CONFIGURATION.COACH_PORTRAIT_BORDER_COLOR,);
+    
 
     const PORTRAIT = this.add.image(
       CENTER_X,
