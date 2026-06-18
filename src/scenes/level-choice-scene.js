@@ -40,7 +40,7 @@ export class LevelChoiceScene extends Phaser.Scene {
     });
 
     PLAY_BUTTON.on('pointerdown', () => {
-      this.scene.start(SCENE_KEYS.MAP, {
+      this.scene.start(SCENE_KEYS.COACH, {
         level: 1,
       });
     });
