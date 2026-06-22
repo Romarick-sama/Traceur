@@ -8,6 +8,7 @@ export const ROOM_WIDTH = STYLE_CONFIGURATION.WIDTH;
 export const ROOM_HEIGHT = STYLE_CONFIGURATION.HEIGHT;
 export const MAP_COLS = 3;
 export const MAP_ROWS = 5;
+export const PIXELS_PER_METER = 5;
 
 const TOTAL_COLS = ROOM_COLS * MAP_COLS;
 const TOTAL_ROWS = ROOM_ROWS * MAP_ROWS;
@@ -21,6 +22,25 @@ const INITIAL_FILL_RATE = 0.22;
 const CA_ITERATIONS = 2;
 const CA_SURVIVAL_THRESHOLD = 0;
 const CA_BIRTH_THRESHOLD = 3;
+
+/**
+ * Highest cluster sizes.
+ */
+const BUSH_CLUSTER_TARGET = 4;
+const THORN_BUSH_CLUSTER_TARGET = 3;
+
+/**
+ * Chance, per generated map, of forcing one cluster up to its highest size.
+ */
+const RED_FLAG_PATTERN_CHANCE = 0.35;
+
+/**
+ * tree.png displays at ~286x316px even at the small scale kept on purpose
+ * (half-extent ~158px). A 1-cell buffer (Chebyshev distance 2, 200px
+ * center-to-center) looked safe on paper but still visually clipped in
+ * practice, so use a more conservative 2-cell buffer (300px clearance).
+ */
+const TREE_AVOIDANCE_RADIUS = 2;
 
 const EXPLANATIONS = {
   FIRST: 'Pars depuis ton point de départ.',
@@ -424,11 +444,10 @@ function generateClusteredGrid(startKey) {
  * dense cluster centers become TREE, cluster edges become THORN_BUSH,
  * isolated cells become BUSH (traversable, not blocking).
  * @param {Set<string>} grid
- * @return {{ obstacles: Array, blocked: Set<string> }}
+ * @return {Array<{col: number, row: number, type: string}>}
  */
 function assignObstacleTypes(grid) {
   const obstacles = [];
-  const blocked = new Set();
 
   grid.forEach((key) => {
     const [col, row] = key.split(',').map(Number);
@@ -451,15 +470,114 @@ function assignObstacleTypes(grid) {
       row,
       type,
     });
-
-    if (BLOCKING_TYPES.includes(type)) {
-      blocked.add(key);
-    }
   });
 
-  return {
-    obstacles,
-    blocked,
+  return obstacles;
+}
+
+/**
+ * Groups the obstacles of the given type into connected components
+ * (4-directional adjacency), so cluster sizes can be checked against a
+ * dog's "groupement de X et +" red flag threshold.
+ * @param {Array<{col: number, row: number, type: string}>} obstacles
+ * @param {string} type
+ * @return {Array<Array<string>>} array of clusters, each a list of cell keys
+ */
+function findClusters(obstacles, type) {
+  const CELLS_OF_TYPE = new Set(
+    obstacles
+      .filter((obstacle) => obstacle.type === type)
+      .map((obstacle) => cellKey(obstacle.col, obstacle.row)),
+  );
+  const VISITED = new Set();
+  const CLUSTERS = [];
+
+  CELLS_OF_TYPE.forEach((key) => {
+    if (VISITED.has(key)) {
+      return;
+    };
+
+    const CLUSTER = [];
+    const QUEUE = [key];
+    VISITED.add(key);
+
+    while (QUEUE.length > 0) {
+      const CURRENT_KEY = QUEUE.shift();
+      CLUSTER.push(CURRENT_KEY);
+      const [col, row] = CURRENT_KEY.split(',').map(Number);
+
+      neighbors(col, row).forEach(([neighborCol, neighborRow]) => {
+        const NEIGHBOR_KEY = cellKey(neighborCol, neighborRow);
+        if (CELLS_OF_TYPE.has(NEIGHBOR_KEY) && !VISITED.has(NEIGHBOR_KEY)) {
+          VISITED.add(NEIGHBOR_KEY);
+          QUEUE.push(NEIGHBOR_KEY);
+        };
+      });
+    };
+
+    CLUSTERS.push(CLUSTER);
+  });
+
+  return CLUSTERS;
+}
+
+/**
+ * If no existing cluster of the given type already reaches targetSize,
+ * grows the largest one by converting adjacent free cells until it does
+ * (or until there is no more room to grow). Mutates `obstacles` and `grid`.
+ * @param {Array<{col: number, row: number, type: string}>} obstacles
+ * @param {Set<string>} grid
+ * @param {string} type
+ * @param {number} targetSize
+ * @param {string} startKey - cell that must stay free
+ * @return {void}
+ */
+function growClusterToTarget(
+  obstacles,
+  grid,
+  type,
+  targetSize,
+  startKey,
+) {
+  const CLUSTERS = findClusters(obstacles, type);
+  const LARGEST_CLUSTER = CLUSTERS.reduce(
+    (largest, cluster) => (cluster.length > largest.length ? cluster : largest),
+    [],
+  );
+
+  if (LARGEST_CLUSTER.length === 0 || LARGEST_CLUSTER.length >= targetSize) {
+    return;
+  };
+
+  const FRONTIER = [...LARGEST_CLUSTER];
+  while (FRONTIER.length < targetSize) {
+    let grew = false;
+
+    for (const key of [...FRONTIER]) {
+      const [col, row] = key.split(',').map(Number);
+      const FREE_NEIGHBOR = neighbors(col, row).find(([neighborCol, neighborRow]) => {
+        const NEIGHBOR_KEY = cellKey(neighborCol, neighborRow);
+        return NEIGHBOR_KEY !== startKey && !grid.has(NEIGHBOR_KEY);
+      });
+
+      if (FREE_NEIGHBOR) {
+        const [freeCol, freeRow] = FREE_NEIGHBOR;
+        const FREE_KEY = cellKey(freeCol, freeRow);
+        grid.add(FREE_KEY);
+        obstacles.push({
+          col: freeCol,
+          row: freeRow,
+          type,
+        });
+        FRONTIER.push(FREE_KEY);
+        grew = true;
+        break;
+      };
+    };
+
+    if (!grew) {
+      break;
+    };
   };
 }
 
@@ -525,12 +643,21 @@ export function generateMap(levelConfig) {
       };
     });
 
-    // The ideal/solution path must also dodge red-flag-triggering cells
-    // (eg. BUSH) even though the player can physically walk through them.
     const AVOIDED_FOR_SOLUTION = new Set(BLOCKED);
     OBSTACLES.forEach(({ col, row, type }) => {
       if (RED_FLAG_ENVIRONMENT_TYPES.includes(type)) {
         AVOIDED_FOR_SOLUTION.add(cellKey(col, row));
+      };
+
+      if (type === 'TREE') {
+        for (let neighborCol = col - TREE_AVOIDANCE_RADIUS; neighborCol <= col + TREE_AVOIDANCE_RADIUS; neighborCol++) {
+          for (let neighborRow = row - TREE_AVOIDANCE_RADIUS; neighborRow <= row + TREE_AVOIDANCE_RADIUS; neighborRow++) {
+            if (neighborCol < 0 || neighborCol >= TOTAL_COLS || neighborRow < 0 || neighborRow >= TOTAL_ROWS) {
+              continue;
+            };
+            AVOIDED_FOR_SOLUTION.add(cellKey(neighborCol, neighborRow));
+          };
+        };
       };
     });
 

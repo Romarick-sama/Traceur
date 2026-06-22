@@ -185,16 +185,19 @@ export class Level {
   }
 
   /**
-   * Returns the red flags triggered by the objects the human has touched
-   * or passed through during the level.
+   * Returns the red flags triggered by the objects the given human has
+   * touched or passed through. Accepts an explicit human because, in the
+   * room-based gameplay (MapScene), the human is shared and managed by the
+   * scene across every room/"partie" instead of being owned by this level.
+   * @param {Human} [human] - defaults to this level's own human, if any
    * @return {Array<{id: string, message: string}>}
    */
-  getRedFlags() {
-    if (!this.human) {
+  getRedFlags(human = this.human) {
+    if (!human) {
       return [];
     };
 
-    return getRedFlags(this.human.collidedObjects);
+    return getRedFlags(human.collidedObjects);
   }
 
   /**

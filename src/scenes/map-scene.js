@@ -9,6 +9,7 @@ import {
   ROOM_HEIGHT,
   MAP_COLS,
   MAP_ROWS,
+  PIXELS_PER_METER,
 } from '../game-objects/gameplay/map.js';
 import { getLevelConfig } from '../data/levels-data.js';
 
@@ -98,16 +99,18 @@ export class MapScene extends Phaser.Scene {
     this.roomStage.level.setupCollidersFor(this.human);
 
     this.globalTrace = [];
+    this.distanceTraveledPx = 0;
     this._recordTracePoint();
 
     this.cursors = this.input.keyboard.createCursorKeys();
 
     this._createHideButton();
+    this._createDistanceCounter();
   }
 
   /**
    * Records the human's current global position in the trace if it is far
-   * enough from the last recorded point.
+   * enough from the last recorded point, accumulating the walked distance.
    * @return {void}
    */
   _recordTracePoint() {
@@ -126,6 +129,8 @@ export class MapScene extends Phaser.Scene {
       if (DIST < TRACE_MIN_DISTANCE) {
         return;
       };
+      this.distanceTraveledPx += DIST;
+      this._updateDistanceCounter();
     };
 
     this.globalTrace.push({
@@ -229,6 +234,7 @@ export class MapScene extends Phaser.Scene {
     ).setInteractive({
       useHandCursor: true,
     });
+    BUTTON.setDepth(10);
 
     BUTTON.on('pointerover', () => {
       BUTTON.setBackgroundColor(STYLE_CONFIGURATION.HIDE_BUTTON_HOVER_COLOR);
@@ -239,6 +245,54 @@ export class MapScene extends Phaser.Scene {
     BUTTON.on('pointerdown', () => {
       this._goToCorrection();
     });
+  }
+
+  /**
+   * Creates the live meter counter below the "Se cacher" button, tracking
+   * the human's actual walked distance against the level's target.
+   * @return {void}
+   */
+  _createDistanceCounter() {
+    this.distanceText = this.add.text(
+      this.scale.width - 16,
+      54,
+      this._formatDistanceText(),
+      {
+        fontSize: STYLE_CONFIGURATION.STEP_HUD_FONT_SIZE,
+        fontFamily: STYLE_CONFIGURATION.STEP_HUD_FONT_FAMILY,
+        color: STYLE_CONFIGURATION.STEP_HUD_COLOR,
+        backgroundColor: STYLE_CONFIGURATION.STEP_HUD_BACKGROUND_COLOR,
+        padding: {
+          x: 8,
+          y: 4,
+        },
+      },
+    ).setOrigin(
+      1,
+      0,
+    );
+    this.distanceText.setDepth(10);
+  }
+
+  /**
+   * Returns the current distance/target label, in meters.
+   * @return {string}
+   */
+  _formatDistanceText() {
+    const METERS = Math.round(this.distanceTraveledPx / PIXELS_PER_METER);
+    return `${METERS}m / ${this.levelConfig.targetDistance}m`;
+  }
+
+  /**
+   * Refreshes the meter counter's text to match the distance walked so far.
+   * @return {void}
+   */
+  _updateDistanceCounter() {
+    if (!this.distanceText) {
+      return;
+    };
+
+    this.distanceText.setText(this._formatDistanceText());
   }
 
   /**
