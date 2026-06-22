@@ -33,6 +33,7 @@ export class Human extends Phaser.Physics.Arcade.Sprite {
     );
     scene.add.existing(this);
     scene.physics.add.existing(this);
+    this.setDepth(5);
 
     this.setCollideWorldBounds(collideWorldBounds);
     this.speed = speed;
