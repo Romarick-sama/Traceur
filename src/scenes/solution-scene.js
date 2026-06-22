@@ -2,7 +2,12 @@ import { STYLE_CONFIGURATION, BRAND_COLORS } from '../common/style-config.js';
 import { SCENE_KEYS } from '../common/scene-keys.js';
 import { Human } from '../game-objects/characters/human.js';
 import { RoomStage } from '../game-objects/gameplay/room-stage.js';
-import { globalToRoom, globalToLocal } from '../game-objects/gameplay/map.js';
+import {
+  globalToRoom,
+  globalToLocal,
+  ROOM_WIDTH,
+  ROOM_HEIGHT,
+} from '../game-objects/gameplay/map.js';
 import { getLevelConfig } from '../data/levels-data.js';
 
 const SOLUTION_LINE_COLOR = 0x22cc70;
@@ -91,65 +96,110 @@ export class SolutionScene extends Phaser.Scene {
   }
 
   /**
-   * Returns the waypoint in local coordinates relative to the given room, or
-   * `null` if the waypoint does not belong to that room.
-   * @param {{x: number, y: number}} point
-   * @param {{col: number, row: number}} room
-   * @return {{x: number, y: number}|null}
+   * Clips an axis-aligned segment (the waypoints are always purely
+   * horizontal or vertical between each other) to a room's bounds, in
+   * global coordinates.
+   * @param {{x: number, y: number}} from
+   * @param {{x: number, y: number}} to
+   * @param {{minX: number, maxX: number, minY: number, maxY: number}} bounds
+   * @return {{from: {x: number, y: number}, to: {x: number, y: number}}|null}
    */
-  _localPointForRoom(
-    point,
-    room,
+  _clipSegmentToRoom(
+    from,
+    to,
+    bounds,
   ) {
-    const POINT_ROOM = globalToRoom(
-      point.x,
-      point.y,
-    );
-    if (POINT_ROOM.col !== room.col || POINT_ROOM.row !== room.row) {
+    if (from.x === to.x) {
+      const X = from.x;
+      if (X < bounds.minX || X > bounds.maxX) {
+        return null;
+      };
+
+      const MIN_Y = Math.max(Math.min(from.y, to.y), bounds.minY);
+      const MAX_Y = Math.min(Math.max(from.y, to.y), bounds.maxY);
+      if (MIN_Y > MAX_Y) {
+        return null;
+      };
+
+      const ASCENDING = from.y <= to.y;
+      return {
+        from: { x: X, y: ASCENDING ? MIN_Y : MAX_Y },
+        to: { x: X, y: ASCENDING ? MAX_Y : MIN_Y },
+      };
+    };
+
+    const Y = from.y;
+    if (Y < bounds.minY || Y > bounds.maxY) {
       return null;
     };
 
-    return globalToLocal(
-      point.x,
-      point.y,
-    );
+    const MIN_X = Math.max(Math.min(from.x, to.x), bounds.minX);
+    const MAX_X = Math.min(Math.max(from.x, to.x), bounds.maxX);
+    if (MIN_X > MAX_X) {
+      return null;
+    };
+
+    const ASCENDING = from.x <= to.x;
+    return {
+      from: { x: ASCENDING ? MIN_X : MAX_X, y: Y },
+      to: { x: ASCENDING ? MAX_X : MIN_X, y: Y },
+    };
   }
 
   /**
-   * Redraws the ideal trace, keeping only the segments that belong to the
-   * currently displayed room.
+   * Redraws the ideal trace, clipping every waypoint-to-waypoint segment to
+   * the currently displayed room so straight runs crossing several rooms
+   * still draw in each of them (not just the rooms containing a corner).
    * @return {void}
    */
   _drawSolutionTrace() {
     this.solutionGraphics.clear();
 
     const ROOM = this.roomStage.currentRoom;
-    const WAYPOINTS = this.solutionData.waypoints;
-    const LOCAL_POINTS = WAYPOINTS
-      .map((point) => this._localPointForRoom(point, ROOM))
-      .filter((point) => point !== null);
-
-    if (LOCAL_POINTS.length < 2) {
-      return;
+    const BOUNDS = {
+      minX: ROOM.col * ROOM_WIDTH,
+      maxX: ROOM.col * ROOM_WIDTH + ROOM_WIDTH,
+      minY: ROOM.row * ROOM_HEIGHT,
+      maxY: ROOM.row * ROOM_HEIGHT + ROOM_HEIGHT,
     };
+    const WAYPOINTS = this.solutionData.waypoints;
 
     this.solutionGraphics.lineStyle(
       SOLUTION_LINE_WIDTH,
       SOLUTION_LINE_COLOR,
       1,
     );
-    this.solutionGraphics.beginPath();
-    this.solutionGraphics.moveTo(
-      LOCAL_POINTS[0].x,
-      LOCAL_POINTS[0].y,
-    );
-    for (let pointIndex = 1; pointIndex < LOCAL_POINTS.length; pointIndex++) {
-      this.solutionGraphics.lineTo(
-        LOCAL_POINTS[pointIndex].x,
-        LOCAL_POINTS[pointIndex].y,
+
+    for (let waypointIndex = 0; waypointIndex < WAYPOINTS.length - 1; waypointIndex++) {
+      const CLIPPED = this._clipSegmentToRoom(
+        WAYPOINTS[waypointIndex],
+        WAYPOINTS[waypointIndex + 1],
+        BOUNDS,
       );
+      if (!CLIPPED) {
+        continue;
+      };
+
+      const LOCAL_FROM = globalToLocal(
+        CLIPPED.from.x,
+        CLIPPED.from.y,
+      );
+      const LOCAL_TO = globalToLocal(
+        CLIPPED.to.x,
+        CLIPPED.to.y,
+      );
+
+      this.solutionGraphics.beginPath();
+      this.solutionGraphics.moveTo(
+        LOCAL_FROM.x,
+        LOCAL_FROM.y,
+      );
+      this.solutionGraphics.lineTo(
+        LOCAL_TO.x,
+        LOCAL_TO.y,
+      );
+      this.solutionGraphics.strokePath();
     };
-    this.solutionGraphics.strokePath();
   }
 
   /**

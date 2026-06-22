@@ -1,4 +1,5 @@
 import { STYLE_CONFIGURATION } from '../../common/style-config.js';
+import { RED_FLAG_TYPES } from './red-flag.js';
 
 export const CELL_SIZE = 100;
 export const ROOM_COLS = STYLE_CONFIGURATION.WIDTH / CELL_SIZE;
@@ -12,6 +13,7 @@ const TOTAL_COLS = ROOM_COLS * MAP_COLS;
 const TOTAL_ROWS = ROOM_ROWS * MAP_ROWS;
 
 const BLOCKING_TYPES = ['TREE', 'THORN_BUSH'];
+const RED_FLAG_ENVIRONMENT_TYPES = Object.keys(RED_FLAG_TYPES);
 
 const MIN_HIDE_DISTANCE = 15;
 const MAX_ATTEMPTS = 100;
@@ -495,17 +497,47 @@ export function generateMap(levelConfig) {
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const clusteredGrid = generateClusteredGrid(START_KEY);
-    const generatedObstacles = assignObstacleTypes(clusteredGrid);
-    const OBSTACLES = generatedObstacles.obstacles;
+    const OBSTACLES = assignObstacleTypes(clusteredGrid);
+
+    if (Math.random() < RED_FLAG_PATTERN_CHANCE) {
+      growClusterToTarget(
+        OBSTACLES,
+        clusteredGrid,
+        'BUSH',
+        BUSH_CLUSTER_TARGET,
+        START_KEY,
+      );
+    };
+    if (Math.random() < RED_FLAG_PATTERN_CHANCE) {
+      growClusterToTarget(
+        OBSTACLES,
+        clusteredGrid,
+        'THORN_BUSH',
+        THORN_BUSH_CLUSTER_TARGET,
+        START_KEY,
+      );
+    };
+
     const BLOCKED = new Set([START_KEY]);
-    generatedObstacles.blocked.forEach((key) => {
-      BLOCKED.add(key);
+    OBSTACLES.forEach(({ col, row, type }) => {
+      if (BLOCKING_TYPES.includes(type)) {
+        BLOCKED.add(cellKey(col, row));
+      };
+    });
+
+    // The ideal/solution path must also dodge red-flag-triggering cells
+    // (eg. BUSH) even though the player can physically walk through them.
+    const AVOIDED_FOR_SOLUTION = new Set(BLOCKED);
+    OBSTACLES.forEach(({ col, row, type }) => {
+      if (RED_FLAG_ENVIRONMENT_TYPES.includes(type)) {
+        AVOIDED_FOR_SOLUTION.add(cellKey(col, row));
+      };
     });
 
     const VISITED = breadthFirstSearch(
       START_COL,
       START_ROW,
-      BLOCKED,
+      AVOIDED_FOR_SOLUTION,
     );
     const HIDE_KEY = pickFarthestCell(
       VISITED,

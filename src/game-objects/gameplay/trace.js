@@ -26,6 +26,7 @@ export class Trace {
     this.lineWidth = lineWidth;
     this.points = [];
     this.graphics = scene.add.graphics();
+    this.graphics.setDepth(4);
   }
 
   /**

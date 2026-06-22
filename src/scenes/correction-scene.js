@@ -5,6 +5,7 @@ import { Human } from '../game-objects/characters/human.js';
 import { RoomStage } from '../game-objects/gameplay/room-stage.js';
 import { globalToRoom, globalToLocal } from '../game-objects/gameplay/map.js';
 import { getLevelConfig } from '../data/levels-data.js';
+import { getDogProfile } from '../data/dogs-data.js';
 
 /**
  * Replays the player's trace with the dog: the dog starts where the human
@@ -23,6 +24,14 @@ export class CorrectionScene extends Phaser.Scene {
       levelNumber = 1;
     }
     this.levelNumber = levelNumber;
+
+    let dogId;
+    if (data && data.dogId !== undefined && data.dogId !== null) {
+      dogId = data.dogId;
+    } else {
+      dogId = 1;
+    }
+    this.dogId = dogId;
 
     let playerTrace;
     if (data && data.trace !== undefined && data.trace !== null) {
@@ -246,7 +255,7 @@ export class CorrectionScene extends Phaser.Scene {
       this,
       START_LOCAL.x,
       START_LOCAL.y,
-      this.levelConfig.dog,
+      getDogProfile(this.dogId),
     );
   }
 
@@ -371,8 +380,10 @@ export class CorrectionScene extends Phaser.Scene {
     let title;
     if (success) {
       title = 'Bravo, le chien a réussi à retrouver l\'humain caché grâce à un tracé qui correspond au chien !';
-    } else {
+    } else if (this.redFlags.length > 0) {
       title = `Oups, le tracé comprend ${this.redFlags.map((flag) => flag.message).join(' ')} donc le chien n'a pas réussi à trouver l'humain.`;
+    } else {
+      title = 'Oups, le tracé est trop court pour donner au chien une piste claire à suivre.';
     }
     const TITLE = title;
 
@@ -415,6 +426,7 @@ export class CorrectionScene extends Phaser.Scene {
       () => {
         this.scene.start(SCENE_KEYS.MAP, {
           level: this.levelNumber,
+          dogId: this.dogId,
         });
       },
     ));
@@ -440,6 +452,7 @@ export class CorrectionScene extends Phaser.Scene {
         () => {
           this.scene.start(SCENE_KEYS.COACH, {
             level: this.levelNumber + 1,
+            dogId: this.dogId,
           });
         },
       ));
