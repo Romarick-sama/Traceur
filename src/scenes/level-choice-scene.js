@@ -6,6 +6,16 @@ export class LevelChoiceScene extends Phaser.Scene {
     super(SCENE_KEYS.LEVEL_CHOICE);
   }
 
+  init(data) {
+    let dogId;
+    if (data && data.dogId !== undefined && data.dogId !== null) {
+      dogId = data.dogId;
+    } else {
+      dogId = 1;
+    }
+    this.dogId = dogId;
+  }
+
   create() {
     this.cameras.main.setBackgroundColor(STYLE_CONFIGURATION.SELECT_LEVEL_BACKGROUND_COLOR);
 
@@ -42,6 +52,7 @@ export class LevelChoiceScene extends Phaser.Scene {
     PLAY_BUTTON.on('pointerdown', () => {
       this.scene.start(SCENE_KEYS.COACH, {
         level: 1,
+        dogId: this.dogId,
       });
     });
   }

@@ -1,6 +1,7 @@
 import { STYLE_CONFIGURATION } from './common/style-config.js';
 import { PreloadScene } from './scenes/preload-scene.js';
 import { IntroScene } from './scenes/intro-scene.js';
+import { DogChoiceScene } from './scenes/dog-choice-scene.js';
 import { LevelChoiceScene } from './scenes/level-choice-scene.js';
 import { CoachScene } from './scenes/coach-scene.js';
 import { MapScene } from './scenes/map-scene.js';
@@ -28,6 +29,7 @@ const CONFIG = {
   scene: [
     PreloadScene,
     IntroScene,
+    DogChoiceScene,
     LevelChoiceScene,
     CoachScene,
     MapScene,

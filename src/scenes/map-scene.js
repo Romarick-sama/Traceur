@@ -28,6 +28,14 @@ export class MapScene extends Phaser.Scene {
       levelNumber = 1;
     }
     this.levelNumber = levelNumber;
+
+    let dogId;
+    if (data && data.dogId !== undefined && data.dogId !== null) {
+      dogId = data.dogId;
+    } else {
+      dogId = 1;
+    }
+    this.dogId = dogId;
   }
 
   create() {
@@ -36,8 +44,6 @@ export class MapScene extends Phaser.Scene {
 
     this._showLoading();
 
-    // Defer to the next tick so the loading text has a chance to render
-    // before the (synchronous) generation runs.
     this.time.delayedCall(
       0,
       () => {
@@ -243,8 +249,9 @@ export class MapScene extends Phaser.Scene {
   _goToCorrection() {
     this.scene.start(SCENE_KEYS.CORRECTION, {
       level: this.levelNumber,
+      dogId: this.dogId,
       trace: this.globalTrace,
-      redFlags: this.roomStage.level.getRedFlags(),
+      redFlags: this.roomStage.level.getRedFlags(this.human),
       environment: this.mapData,
       solution: this.mapData.solution,
     });

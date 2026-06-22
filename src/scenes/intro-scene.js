@@ -42,6 +42,6 @@ export class IntroScene extends Phaser.Scene {
 
     START_BUTTON.on('pointerover', () => START_BUTTON.setColor(STYLE_CONFIGURATION.START_BUTTON_HOVER_COLOR));
     START_BUTTON.on('pointerout', () => START_BUTTON.setColor(STYLE_CONFIGURATION.START_BUTTON_FONT_COLOR));
-    START_BUTTON.on('pointerdown', () => this.scene.start(SCENE_KEYS.LEVEL_CHOICE));
+    START_BUTTON.on('pointerdown', () => this.scene.start(SCENE_KEYS.DOG_CHOICE));
   }
 }

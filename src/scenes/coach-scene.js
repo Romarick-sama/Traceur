@@ -1,12 +1,14 @@
 import { STYLE_CONFIGURATION } from '../common/style-config.js';
 import { SCENE_KEYS } from '../common/scene-keys.js';
 import { ASSET_KEYS } from '../common/asset-keys.js';
+import { getDogProfile } from '../data/dogs-data.js';
 import { getLevelConfig } from '../data/levels-data.js';
 
-const COACH_DIALOG_LINES = [
-  'Merci de te cacher pour Nomade !',
-  "Je voudrais une piste de 200m en faisant le plus tout droit pour que Nomade prenne encore confiance en l'activité !",
-];
+const DOG_EXPERIENCE_LABELS = {
+  debutant: 'Débutant',
+  moyen: 'Moyen',
+  avance: 'Avancé',
+};
 
 /**
  * Visual-novel style scene shown between the level choice and the actual
@@ -26,16 +28,29 @@ export class CoachScene extends Phaser.Scene {
       levelNumber = 1;
     }
     this.levelNumber = levelNumber;
+
+    let dogId;
+    if (data && data.dogId !== undefined && data.dogId !== null) {
+      dogId = data.dogId;
+    } else {
+      dogId = 1;
+    }
+    this.dogId = dogId;
   }
 
   create() {
     this.cameras.main.setBackgroundColor(STYLE_CONFIGURATION.COACH_BACKGROUND_COLOR);
+    this.dogProfile = getDogProfile(this.dogId);
     this.levelConfig = getLevelConfig(this.levelNumber);
 
     this._createCoachPortrait();
     this._createDogProfile();
     this._createDialogBox();
 
+    const COACH_DIALOG_LINES = [
+      `Merci de te cacher pour ${this.dogProfile.prenom} !`,
+      `Je voudrais une piste de ${this.levelConfig.targetDistance}m en faisant le plus tout droit pour que ${this.dogProfile.prenom} prenne encore confiance en l'activité !`,
+    ];
     this.words = COACH_DIALOG_LINES.join(' ').split(' ');
     this.wordIndex = 0;
     this.dialogText.setText('');
@@ -109,7 +124,7 @@ export class CoachScene extends Phaser.Scene {
     this.add.text(
       CENTER_X,
       DOG_Y + 60,
-      this.levelConfig.dog.prenom,
+      this.dogProfile.prenom,
       {
         fontSize: STYLE_CONFIGURATION.COACH_DOG_LABEL_FONT_SIZE,
         fontFamily: STYLE_CONFIGURATION.COACH_DOG_LABEL_FONT_FAMILY,
@@ -118,9 +133,9 @@ export class CoachScene extends Phaser.Scene {
     ).setOrigin(0.5);
 
     const INFO_LINES = [
-      'Age : ',
-      'Race : ',
-      'Experience : ',
+      `Age : ${this.dogProfile.age} ans`,
+      `Race : ${this.dogProfile.race}`,
+      `Experience : ${DOG_EXPERIENCE_LABELS[this.dogProfile.experience]}`,
     ].join('\n');
 
     this.add.text(
@@ -246,6 +261,7 @@ export class CoachScene extends Phaser.Scene {
     BUTTON.on('pointerdown', () => {
       this.scene.start(SCENE_KEYS.MAP, {
         level: this.levelNumber,
+        dogId: this.dogId,
       });
     });
   }

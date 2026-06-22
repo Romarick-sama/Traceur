@@ -59,7 +59,6 @@ export class Dog extends Phaser.Physics.Arcade.Sprite {
     this.experience = resolvedExperience;
     this.petitChien = petitChien;
 
-    // Liste des red flags du chien, gérée par la classe RedFlag (pas encore implémentée).
     this.redFlags = [];
   }
 }
