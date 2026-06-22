@@ -73,6 +73,7 @@ export class SolutionScene extends Phaser.Scene {
 
     this.roomStage = new RoomStage(this, this.mapData);
     this.solutionGraphics = this.add.graphics();
+    this.solutionGraphics.setDepth(4);
 
     const START = this.solutionData.waypoints[0];
     const START_ROOM = globalToRoom(
@@ -84,13 +85,17 @@ export class SolutionScene extends Phaser.Scene {
       START.y,
     );
 
-    this._showRoom(START_ROOM);
-
     this.tracer = new Human(
       this,
       START_LOCAL.x,
       START_LOCAL.y,
     );
+
+    this.revealedIndex = 0;
+    this.revealedPartial = null;
+    this.roomEntryIndex = 0;
+
+    this._showRoom(START_ROOM);
 
     this._playStep(0);
   }
@@ -147,9 +152,60 @@ export class SolutionScene extends Phaser.Scene {
   }
 
   /**
-   * Redraws the ideal trace, clipping every waypoint-to-waypoint segment to
-   * the currently displayed room so straight runs crossing several rooms
-   * still draw in each of them (not just the rooms containing a corner).
+   * Clips one segment to the currently displayed room and strokes it, if
+   * any part of it falls inside that room.
+   * @param {{x: number, y: number}} from
+   * @param {{x: number, y: number}} to
+   * @param {{minX: number, maxX: number, minY: number, maxY: number}} bounds
+   * @return {void}
+   */
+  _drawClippedSegment(
+    from,
+    to,
+    bounds,
+  ) {
+    const CLIPPED = this._clipSegmentToRoom(
+      from,
+      to,
+      bounds,
+    );
+    if (!CLIPPED) {
+      return;
+    };
+
+    const LOCAL_FROM = globalToLocal(
+      CLIPPED.from.x,
+      CLIPPED.from.y,
+    );
+    const LOCAL_TO = globalToLocal(
+      CLIPPED.to.x,
+      CLIPPED.to.y,
+    );
+
+    this.solutionGraphics.beginPath();
+    this.solutionGraphics.moveTo(
+      LOCAL_FROM.x,
+      LOCAL_FROM.y,
+    );
+    this.solutionGraphics.lineTo(
+      LOCAL_TO.x,
+      LOCAL_TO.y,
+    );
+    this.solutionGraphics.strokePath();
+  }
+
+  /**
+   * Redraws the trace walked since entering this room (every segment from
+   * `roomEntryIndex` up to `revealedIndex`, plus the in-progress partial one
+   * up to `revealedPartial`), clipped to the currently displayed room.
+   * Rooms are swapped instantly here, with no camera pan, so segments
+   * completed before this room was entered are excluded even if they
+   * geometrically intersect it - otherwise an old leg that only transited
+   * through this room long before (on the way elsewhere) would render in
+   * full the instant we arrive, looking like it was drawn before we got
+   * here. Limiting to walked-since-entry also keeps the visible line ending
+   * exactly where the tracer is, even when the full route revisits this
+   * same room later from a different direction.
    * @return {void}
    */
   _drawSolutionTrace() {
@@ -170,41 +226,30 @@ export class SolutionScene extends Phaser.Scene {
       1,
     );
 
-    for (let waypointIndex = 0; waypointIndex < WAYPOINTS.length - 1; waypointIndex++) {
-      const CLIPPED = this._clipSegmentToRoom(
+    for (let waypointIndex = this.roomEntryIndex; waypointIndex < this.revealedIndex; waypointIndex++) {
+      this._drawClippedSegment(
         WAYPOINTS[waypointIndex],
         WAYPOINTS[waypointIndex + 1],
         BOUNDS,
       );
-      if (!CLIPPED) {
-        continue;
-      };
+    };
 
-      const LOCAL_FROM = globalToLocal(
-        CLIPPED.from.x,
-        CLIPPED.from.y,
+    if (this.revealedPartial) {
+      this._drawClippedSegment(
+        WAYPOINTS[this.revealedIndex],
+        this.revealedPartial,
+        BOUNDS,
       );
-      const LOCAL_TO = globalToLocal(
-        CLIPPED.to.x,
-        CLIPPED.to.y,
-      );
-
-      this.solutionGraphics.beginPath();
-      this.solutionGraphics.moveTo(
-        LOCAL_FROM.x,
-        LOCAL_FROM.y,
-      );
-      this.solutionGraphics.lineTo(
-        LOCAL_TO.x,
-        LOCAL_TO.y,
-      );
-      this.solutionGraphics.strokePath();
     };
   }
 
   /**
    * Switches the displayed room and redraws the parts of the ideal trace
-   * that belong to it.
+   * that belong to it. No physics colliders are set up here: the tracer's
+   * position is hard-set every tween frame (see _moveTracerTo), so any
+   * collision separation would just get overwritten by the next frame and
+   * drift the tracer off the line. The route itself is already guaranteed
+   * obstacle/red-flag-free by AVOIDED_FOR_SOLUTION in map.js's pathfinding.
    * @param {{col: number, row: number}} room
    * @return {void}
    */
@@ -213,6 +258,7 @@ export class SolutionScene extends Phaser.Scene {
       room.col,
       room.row,
     );
+    this.roomEntryIndex = this.revealedIndex;
     this._drawSolutionTrace();
   }
 
@@ -227,12 +273,17 @@ export class SolutionScene extends Phaser.Scene {
     const WAYPOINTS = this.solutionData.waypoints;
     const WAYPOINT = WAYPOINTS[index];
 
+    this.revealedIndex = index;
+    this.revealedPartial = null;
+
     const WAYPOINT_ROOM = globalToRoom(
       WAYPOINT.x,
       WAYPOINT.y,
     );
     if (WAYPOINT_ROOM.col !== this.roomStage.currentRoom.col || WAYPOINT_ROOM.row !== this.roomStage.currentRoom.row) {
       this._showRoom(WAYPOINT_ROOM);
+    } else {
+      this._drawSolutionTrace();
     };
 
     const LOCAL = globalToLocal(
@@ -258,6 +309,7 @@ export class SolutionScene extends Phaser.Scene {
     this._moveTracerTo(
       WAYPOINT,
       NEXT,
+      index,
       () => {
         this._playStep(index + 1);
       },
@@ -266,15 +318,18 @@ export class SolutionScene extends Phaser.Scene {
 
   /**
    * Tweens the tracer from `from` to `to` (global coordinates), switching
-   * rooms when the interpolated position crosses a room boundary.
+   * rooms when the interpolated position crosses a room boundary, and
+   * keeping the revealed trace in sync with the tracer's live position.
    * @param {{x: number, y: number}} from
    * @param {{x: number, y: number}} to
+   * @param {number} fromIndex - index of `from` in this.solutionData.waypoints
    * @param {() => void} onComplete
    * @return {void}
    */
   _moveTracerTo(
     from,
     to,
+    fromIndex,
     onComplete,
   ) {
     if (to.x < from.x) {
@@ -310,12 +365,20 @@ export class SolutionScene extends Phaser.Scene {
           PROGRESS.value,
         );
 
+        this.revealedIndex = fromIndex;
+        this.revealedPartial = {
+          x: GLOBAL_X,
+          y: GLOBAL_Y,
+        };
+
         const ROOM = globalToRoom(
           GLOBAL_X,
           GLOBAL_Y,
         );
         if (ROOM.col !== this.roomStage.currentRoom.col || ROOM.row !== this.roomStage.currentRoom.row) {
           this._showRoom(ROOM);
+        } else {
+          this._drawSolutionTrace();
         };
 
         const LOCAL = globalToLocal(
