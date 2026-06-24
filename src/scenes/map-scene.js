@@ -2,9 +2,10 @@ import { STYLE_CONFIGURATION } from '../common/style-config.js';
 import { SCENE_KEYS } from '../common/scene-keys.js';
 import { ASSET_KEYS } from '../common/asset-keys.js';
 import { Human } from '../game-objects/characters/human.js';
+import { VirtualJoystick } from '../ui/virtual-joystick.js';
 import { RoomStage } from '../game-objects/gameplay/room-stage.js';
 import {
-  generateMap,
+  buildMapData,
   ROOM_WIDTH,
   ROOM_HEIGHT,
   MAP_COLS,
@@ -316,7 +317,12 @@ export class MapScene extends Phaser.Scene {
       return;
     };
 
-    this.human.update(this.cursors);
+    this.human.update({
+      left: { isDown: this.cursors.left.isDown || !!this.joystick?.left.isDown },
+      right: { isDown: this.cursors.right.isDown || !!this.joystick?.right.isDown },
+      up: { isDown: this.cursors.up.isDown || !!this.joystick?.up.isDown },
+      down: { isDown: this.cursors.down.isDown || !!this.joystick?.down.isDown },
+    });
     this._checkRoomTransition();
     this._recordTracePoint();
   }
