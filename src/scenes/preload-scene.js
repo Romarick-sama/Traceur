@@ -32,6 +32,15 @@ export class PreloadScene extends Phaser.Scene {
         path,
       );
     });
+
+    this.load.image(
+      ASSET_KEYS.MAP_TILES,
+      'public/assets/images/map/gfx/Overworld.png',
+    );
+    this.load.tilemapTiledJSON(
+      ASSET_KEYS.MAP_TILEMAP,
+      'public/assets/images/map/map.json',
+    );
   }
 
   create() {

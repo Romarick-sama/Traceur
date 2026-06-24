@@ -9,6 +9,8 @@ export const ASSET_KEYS = {
   THORN_BUSH: 'thorn_bush',
   COACH_PORTRAIT: 'coach_portrait',
   COACH_TEXT_BG: 'coach_text_bg',
+  MAP_TILES: 'map_tiles',
+  MAP_TILEMAP: 'map_tilemap',
 };
 
 /**

@@ -1,5 +1,6 @@
 import { STYLE_CONFIGURATION, BRAND_COLORS } from '../common/style-config.js';
 import { SCENE_KEYS } from '../common/scene-keys.js';
+import { ASSET_KEYS } from '../common/asset-keys.js';
 import { Human } from '../game-objects/characters/human.js';
 import { RoomStage } from '../game-objects/gameplay/room-stage.js';
 import {
@@ -72,6 +73,7 @@ export class SolutionScene extends Phaser.Scene {
     this.solutionData = solutionData;
 
     this.roomStage = new RoomStage(this, this.mapData);
+    this._createTilemap();
     this.solutionGraphics = this.add.graphics();
     this.solutionGraphics.setDepth(4);
 
@@ -258,8 +260,33 @@ export class SolutionScene extends Phaser.Scene {
       room.col,
       room.row,
     );
+    this._positionTilemapForRoom(room);
     this.roomEntryIndex = this.revealedIndex;
     this._drawSolutionTrace();
+  }
+
+  /**
+   * Builds the Tiled background map once, same as MapScene.
+   * @return {void}
+   */
+  _createTilemap() {
+    const TILEMAP = this.make.tilemap({ key: ASSET_KEYS.MAP_TILEMAP });
+    const TILESET = TILEMAP.addTilesetImage('Overworld', ASSET_KEYS.MAP_TILES);
+    this.tilemapLayer = TILEMAP.createLayer(0, TILESET, 0, 0).setDepth(-1);
+  }
+
+  /**
+   * Shifts the tilemap layer so the room-local viewport (0..ROOM_WIDTH/
+   * HEIGHT) shows the slice of the map matching the given room, mirroring
+   * MapScene's behaviour exactly.
+   * @param {{col: number, row: number}} room
+   * @return {void}
+   */
+  _positionTilemapForRoom(room) {
+    this.tilemapLayer.setPosition(
+      -room.col * ROOM_WIDTH,
+      -room.row * ROOM_HEIGHT,
+    );
   }
 
   /**

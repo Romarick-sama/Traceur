@@ -55,15 +55,14 @@ export class MapScene extends Phaser.Scene {
   }
 
   /**
-   * Displays a "level generation in progress" message while the random
-   * map is computed.
+   * Displays a loading message while the level is being built.
    * @return {void}
    */
   _showLoading() {
     this.loadingText = this.add.text(
       this.scale.width / 2,
       this.scale.height / 2,
-      'Génération du niveau en cours...',
+      'Chargement du niveau...',
       {
         fontSize: STYLE_CONFIGURATION.STEP_HUD_FONT_SIZE,
         fontFamily: STYLE_CONFIGURATION.STEP_HUD_FONT_FAMILY,
@@ -73,21 +72,24 @@ export class MapScene extends Phaser.Scene {
   }
 
   /**
-   * Generates a random, finishable map (a grid of rooms with continuous
-   * obstacles), builds the starting room, places the human and sets up the
-   * controls and UI.
+   * Builds the static, dungeon-style level: a fixed grid of screen-sized
+   * rooms (no camera scroll), the Tiled map as background, the human and
+   * the level's fixed environment.
    * @return {void}
    */
   _buildLevel() {
-    this.mapData = generateMap(this.levelConfig);
+    this.mapData = buildMapData(this.levelConfig);
 
     this.loadingText.destroy();
+
+    this._createTilemap();
 
     this.roomStage = new RoomStage(this, this.mapData);
     this.roomStage.setRoom(
       this.mapData.startRoom.col,
       this.mapData.startRoom.row,
     );
+    this._positionTilemapForRoom(this.mapData.startRoom);
 
     this.human = new Human(
       this,
@@ -104,9 +106,39 @@ export class MapScene extends Phaser.Scene {
     this._recordTracePoint();
 
     this.cursors = this.input.keyboard.createCursorKeys();
+    if (this.sys.game.device.input.touch) {
+      this.joystick = new VirtualJoystick(this);
+    };
 
     this._createHideButton();
     this._createDistanceCounter();
+  }
+
+  /**
+   * Builds the Tiled background map and places it behind everything else.
+   * @return {void}
+   */
+  _createTilemap() {
+    const TILEMAP = this.make.tilemap({ key: ASSET_KEYS.MAP_TILEMAP });
+    const TILESET = TILEMAP.addTilesetImage('Overworld', ASSET_KEYS.MAP_TILES);
+    this.tilemapLayer = TILEMAP.createLayer(0, TILESET, 0, 0).setDepth(-1);
+  }
+
+  /**
+   * Jump-cuts the background (camera itself never moves/follows) to the
+   * slice of the Tiled map matching the given room, so each dungeon screen
+   * shows its own distinct part of the map instead of always the same
+   * corner. The human/environment stay in room-local coordinates (0..
+   * ROOM_WIDTH/HEIGHT), so it's the tilemap layer that is shifted under
+   * them by the opposite offset, rather than scrolling the camera.
+   * @param {{col: number, row: number}} room
+   * @return {void}
+   */
+  _positionTilemapForRoom(room) {
+    this.tilemapLayer.setPosition(
+      -room.col * ROOM_WIDTH,
+      -room.row * ROOM_HEIGHT,
+    );
   }
 
   /**
@@ -198,6 +230,10 @@ export class MapScene extends Phaser.Scene {
       targetCol,
       targetRow,
     );
+    this._positionTilemapForRoom({
+      col: targetCol,
+      row: targetRow,
+    });
     this.roomStage.level.setupCollidersFor(this.human);
     this.human.trace.clear();
     this.cameras.main.flash(
@@ -236,6 +272,7 @@ export class MapScene extends Phaser.Scene {
       useHandCursor: true,
     });
     BUTTON.setDepth(10);
+    BUTTON.setScrollFactor(0);
 
     BUTTON.on('pointerover', () => {
       BUTTON.setBackgroundColor(STYLE_CONFIGURATION.HIDE_BUTTON_HOVER_COLOR);
@@ -273,6 +310,7 @@ export class MapScene extends Phaser.Scene {
       0,
     );
     this.distanceText.setDepth(10);
+    this.distanceText.setScrollFactor(0);
   }
 
   /**

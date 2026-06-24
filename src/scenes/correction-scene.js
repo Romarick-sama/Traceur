@@ -1,9 +1,15 @@
 import { STYLE_CONFIGURATION, BRAND_COLORS } from '../common/style-config.js';
 import { SCENE_KEYS } from '../common/scene-keys.js';
+import { ASSET_KEYS } from '../common/asset-keys.js';
 import { Dog } from '../game-objects/characters/dog.js';
 import { Human } from '../game-objects/characters/human.js';
 import { RoomStage } from '../game-objects/gameplay/room-stage.js';
-import { globalToRoom, globalToLocal } from '../game-objects/gameplay/map.js';
+import {
+  globalToRoom,
+  globalToLocal,
+  ROOM_WIDTH,
+  ROOM_HEIGHT,
+} from '../game-objects/gameplay/map.js';
 import { getLevelConfig } from '../data/levels-data.js';
 import { getDogProfile } from '../data/dogs-data.js';
 
@@ -81,6 +87,7 @@ export class CorrectionScene extends Phaser.Scene {
     this.mapData = mapData;
 
     this.roomStage = new RoomStage(this, this.mapData);
+    this._createTilemap();
     this.traceGraphics = this.add.graphics();
 
     this._createActors();
@@ -176,8 +183,32 @@ export class CorrectionScene extends Phaser.Scene {
       room.col,
       room.row,
     );
+    this._positionTilemapForRoom(room);
     this._drawPlayerTrace();
     this._syncGhostHuman();
+  }
+
+  /**
+   * Builds the Tiled background map once, same as MapScene.
+   * @return {void}
+   */
+  _createTilemap() {
+    const TILEMAP = this.make.tilemap({ key: ASSET_KEYS.MAP_TILEMAP });
+    const TILESET = TILEMAP.addTilesetImage('Overworld', ASSET_KEYS.MAP_TILES);
+    this.tilemapLayer = TILEMAP.createLayer(0, TILESET, 0, 0).setDepth(-1);
+  }
+
+  /**
+   * Shifts the tilemap layer so the room-local viewport shows the slice of
+   * the map matching the given room, mirroring MapScene's behaviour.
+   * @param {{col: number, row: number}} room
+   * @return {void}
+   */
+  _positionTilemapForRoom(room) {
+    this.tilemapLayer.setPosition(
+      -room.col * ROOM_WIDTH,
+      -room.row * ROOM_HEIGHT,
+    );
   }
 
   /**
