@@ -6,12 +6,14 @@ import { VirtualJoystick } from '../ui/virtual-joystick.js';
 import { RoomStage } from '../game-objects/gameplay/room-stage.js';
 import {
   buildMapData,
+  getRoomCollisionRects,
   ROOM_WIDTH,
   ROOM_HEIGHT,
   MAP_COLS,
   MAP_ROWS,
   PIXELS_PER_METER,
 } from '../game-objects/gameplay/map.js';
+import { clearGidFlags } from '../common/tmx-parser.js';
 import { getLevelConfig } from '../data/levels-data.js';
 
 const TRACE_MIN_DISTANCE = 8;
@@ -100,6 +102,8 @@ export class MapScene extends Phaser.Scene {
       false,
     );
     this.roomStage.level.setupCollidersFor(this.human);
+    this._buildRoomColliders(this.mapData.startRoom);
+    this._buildRoomEnvironmentSprites(this.mapData.startRoom);
 
     this.globalTrace = [];
     this.distanceTraveledPx = 0;
@@ -122,6 +126,120 @@ export class MapScene extends Phaser.Scene {
     const TILEMAP = this.make.tilemap({ key: ASSET_KEYS.MAP_TILEMAP });
     const TILESET = TILEMAP.addTilesetImage('Overworld', ASSET_KEYS.MAP_TILES);
     this.tilemapLayer = TILEMAP.createLayer(0, TILESET, 0, 0).setDepth(-1);
+    this.tilemap = TILEMAP;
+
+    const COLLISION_LAYER = TILEMAP.getObjectLayer('collision');
+    this.collisionObjects = COLLISION_LAYER ? COLLISION_LAYER.objects : [];
+
+    const TILEMAP_DATA = this.cache.tilemap.get(ASSET_KEYS.MAP_TILEMAP).data;
+    this.tilesetRefs = TILEMAP_DATA.tilesetRefs;
+    this.decorationTilesByGid = TILEMAP_DATA.decorationTilesByGid;
+    this.gidObjectLayers = ['Environment']
+      .map((name) => TILEMAP.getObjectLayer(name))
+      .filter(Boolean);
+  }
+
+  /**
+   * Finds which tileset reference (Overworld vs the standalone
+   * tree/bush/thornbush tilesets) a tile object's gid belongs to, based on
+   * the highest firstgid not exceeding the gid.
+   * @param {number} gid
+   * @return {{firstgid: number, source: string}|undefined}
+   */
+  _getTilesetRefForGid(gid) {
+    return [...this.tilesetRefs]
+      .sort((a, b) => b.firstgid - a.firstgid)
+      .find((ref) => gid >= ref.firstgid);
+  }
+
+  /**
+   * (Re)builds the invisible static collider rectangles for the given room
+   * from the Tiled "collision" object layer (hitboxes drawn by hand in
+   * Tiled, instead of hardcoded pixel coords in JS), and sets up the
+   * collider against the human.
+   * @param {{col: number, row: number}} room
+   * @return {void}
+   */
+  _buildRoomColliders(room) {
+    if (this.roomColliders) {
+      this.roomColliders.clear(true, true);
+    };
+
+    this.roomColliders = this.physics.add.staticGroup();
+
+    getRoomCollisionRects(this.collisionObjects, room.col, room.row).forEach((rect) => {
+      const BODY = this.add.rectangle(
+        rect.x + rect.width / 2,
+        rect.y + rect.height / 2,
+        rect.width,
+        rect.height,
+      ).setVisible(false);
+      this.physics.add.existing(BODY, true);
+      this.roomColliders.add(BODY);
+    });
+
+    if (this.human) {
+      this.physics.add.collider(this.human, this.roomColliders);
+    };
+  }
+
+  /**
+   * (Re)builds the decorative sprites for the given room from the Tiled
+   * "Environment" gid-based tile objects, which Phaser doesn't auto-render
+   * (only the base tile layer is rendered automatically). The "gamelayer"
+   * is purely a visual room-divider grid in Tiled, not real game data, and
+   * is ignored.
+   * Overworld-tileset gids go through Phaser's own tileset frame slicing;
+   * gids from the standalone tree/bush/thornbush tilesets fall back to
+   * their single already-loaded sprite texture.
+   * @param {{col: number, row: number}} room
+   * @return {void}
+   */
+  _buildRoomEnvironmentSprites(room) {
+    if (this.roomEnvironmentSprites) {
+      this.roomEnvironmentSprites.forEach((sprite) => sprite.destroy());
+    };
+    this.roomEnvironmentSprites = [];
+
+    const ROOM_LEFT = room.col * ROOM_WIDTH;
+    const ROOM_TOP = room.row * ROOM_HEIGHT;
+    const ROOM_RIGHT = ROOM_LEFT + ROOM_WIDTH;
+    const ROOM_BOTTOM = ROOM_TOP + ROOM_HEIGHT;
+
+    this.gidObjectLayers.forEach((layer) => {
+      layer.objects.forEach((object) => {
+        if (object.gid === undefined) {
+          return;
+        };
+
+        if (object.x >= ROOM_RIGHT || object.x + object.width <= ROOM_LEFT
+          || object.y - object.height >= ROOM_BOTTOM || object.y <= ROOM_TOP) {
+          return;
+        };
+
+        const GID = clearGidFlags(object.gid);
+        const REF = this._getTilesetRefForGid(GID);
+        if (!REF) {
+          return;
+        };
+
+        if (REF.source === 'Overworld.tsx') {
+          return;
+        };
+
+        const DECORATION_TILE = this.decorationTilesByGid[GID];
+        if (!DECORATION_TILE) {
+          return;
+        };
+
+        const CENTER_X = object.x + object.width / 2 - ROOM_LEFT;
+        const CENTER_Y = object.y - object.height / 2 - ROOM_TOP;
+        const sprite = this.add.image(CENTER_X, CENTER_Y, DECORATION_TILE.key)
+          .setDisplaySize(object.width, object.height);
+
+        this.roomEnvironmentSprites.push(sprite);
+      });
+    });
   }
 
   /**
@@ -235,6 +353,14 @@ export class MapScene extends Phaser.Scene {
       row: targetRow,
     });
     this.roomStage.level.setupCollidersFor(this.human);
+    this._buildRoomColliders({
+      col: targetCol,
+      row: targetRow,
+    });
+    this._buildRoomEnvironmentSprites({
+      col: targetCol,
+      row: targetRow,
+    });
     this.human.trace.clear();
     this.cameras.main.flash(
       ROOM_TRANSITION_FLASH_DURATION,

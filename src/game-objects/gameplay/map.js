@@ -105,6 +105,38 @@ export function getRoomEnvironment(
 }
 
 /**
+ * Filters the map's "collision" object layer (hitboxes drawn by hand in
+ * Tiled, in global pixel coordinates) down to the rectangles overlapping
+ * the given room, converted to that room's local coordinates.
+ * @param {Array<{x: number, y: number, width: number, height: number}>} collisionObjects
+ * @param {number} col
+ * @param {number} row
+ * @return {Array<{x: number, y: number, width: number, height: number}>}
+ */
+export function getRoomCollisionRects(
+  collisionObjects,
+  col,
+  row,
+) {
+  const ROOM_LEFT = col * ROOM_WIDTH;
+  const ROOM_TOP = row * ROOM_HEIGHT;
+  const ROOM_RIGHT = ROOM_LEFT + ROOM_WIDTH;
+  const ROOM_BOTTOM = ROOM_TOP + ROOM_HEIGHT;
+
+  return collisionObjects
+    .filter((object) => object.x < ROOM_RIGHT
+      && object.x + object.width > ROOM_LEFT
+      && object.y < ROOM_BOTTOM
+      && object.y + object.height > ROOM_TOP)
+    .map((object) => ({
+      x: object.x - ROOM_LEFT,
+      y: object.y - ROOM_TOP,
+      width: object.width,
+      height: object.height,
+    }));
+}
+
+/**
  * Builds the static mapData for a level: a fixed grid of dungeon rooms,
  * with the level's fixed environment placed in the starting room only
  * (every other room is just the bare tilemap), no randomness.

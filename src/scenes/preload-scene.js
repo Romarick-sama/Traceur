@@ -37,10 +37,21 @@ export class PreloadScene extends Phaser.Scene {
       ASSET_KEYS.MAP_TILES,
       'public/assets/images/map/gfx/Overworld.png',
     );
-    this.load.tilemapTiledJSON(
-      ASSET_KEYS.MAP_TILEMAP,
-      'public/assets/images/map/map.json',
-    );
+
+    (this.registry.get('decorationAssets') || []).forEach(({
+      key,
+      path,
+    }) => {
+      this.load.image(
+        key,
+        path,
+      );
+    });
+
+    this.cache.tilemap.add(ASSET_KEYS.MAP_TILEMAP, {
+      data: this.registry.get('mapJson'),
+      format: Phaser.Tilemaps.Formats.TILED_JSON,
+    });
   }
 
   create() {
