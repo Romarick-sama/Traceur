@@ -7,30 +7,14 @@ export const LEVELS_DATA = {
   1: {
     human: {
       x: 400,
-      y: 300,
+      y: 350,
     },
     dog: {
       x: 560,
       y: 300,
       prenom: 'Nomade',
     },
-    environment: [
-      {
-        type: 'BUSH',
-        x: 240,
-        y: 300,
-      },
-      {
-        type: 'THORN_BUSH',
-        x: 560,
-        y: 140,
-      },
-      {
-        type: 'TREE',
-        x: 240,
-        y: 140,
-      },
-    ],
+    environment: [],
     targetDistance: 300,
     solution: {
       waypoints: [
