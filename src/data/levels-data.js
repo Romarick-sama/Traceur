@@ -7,7 +7,7 @@ export const LEVELS_DATA = {
   1: {
     human: {
       x: 400,
-      y: 350,
+      y: 400,
     },
     dog: {
       x: 560,

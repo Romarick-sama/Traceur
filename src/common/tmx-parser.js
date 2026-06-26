@@ -76,30 +76,6 @@ function parseTilesetRefs(xml) {
   return REFS;
 }
 
-const FLIPPED_HORIZONTALLY_FLAG = 0x80000000;
-const FLIPPED_VERTICALLY_FLAG = 0x40000000;
-const FLIPPED_DIAGONALLY_FLAG = 0x20000000;
-
-/**
- * Strips Tiled's flip/rotation flag bits from a tile object's raw gid (set
- * when the object was flipped/rotated in the editor), so the actual
- * tileset-local gid can be used to look up its tileset/texture. Without
- * this, any flipped decoration object silently fails to match its tileset
- * (its raw gid is astronomically larger than every firstgid) and never
- * gets a sprite, even though its (gid-less) collision box still works.
- * @param {number} gid
- * @return {number}
- */
-export function clearGidFlags(gid) {
-  let realGid = gid;
-  [FLIPPED_HORIZONTALLY_FLAG, FLIPPED_VERTICALLY_FLAG, FLIPPED_DIAGONALLY_FLAG].forEach((flag) => {
-    if (realGid >= flag) {
-      realGid -= flag;
-    };
-  });
-  return realGid;
-}
-
 /**
  * Parses an "image collection" tileset (.tsx with columns="0", one
  * standalone image per tile, eg. tree.tsx/bush.tsx/thornbush.tsx) into its

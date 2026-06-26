@@ -13,7 +13,6 @@ import {
   MAP_ROWS,
   PIXELS_PER_METER,
 } from '../game-objects/gameplay/map.js';
-import { clearGidFlags } from '../common/tmx-parser.js';
 import { getLevelConfig } from '../data/levels-data.js';
 
 const TRACE_MIN_DISTANCE = 8;
@@ -134,7 +133,7 @@ export class MapScene extends Phaser.Scene {
     const TILEMAP_DATA = this.cache.tilemap.get(ASSET_KEYS.MAP_TILEMAP).data;
     this.tilesetRefs = TILEMAP_DATA.tilesetRefs;
     this.decorationTilesByGid = TILEMAP_DATA.decorationTilesByGid;
-    this.gidObjectLayers = ['Environment']
+    this.gidObjectLayers = ['WorldBorder', 'Environment']
       .map((name) => TILEMAP.getObjectLayer(name))
       .filter(Boolean);
   }
@@ -185,13 +184,12 @@ export class MapScene extends Phaser.Scene {
 
   /**
    * (Re)builds the decorative sprites for the given room from the Tiled
-   * "Environment" gid-based tile objects, which Phaser doesn't auto-render
-   * (only the base tile layer is rendered automatically). The "gamelayer"
-   * is purely a visual room-divider grid in Tiled, not real game data, and
-   * is ignored.
-   * Overworld-tileset gids go through Phaser's own tileset frame slicing;
-   * gids from the standalone tree/bush/thornbush tilesets fall back to
-   * their single already-loaded sprite texture.
+   * "WorldBorder"/"Environment" gid-based tile objects, which Phaser
+   * doesn't auto-render (only the base tile layer is rendered
+   * automatically). WorldBorder renders below Environment but above the
+   * base tile layer. Overworld-tileset gids go through Phaser's own
+   * tileset frame slicing; gids from the standalone tree/bush/thornbush
+   * tilesets fall back to their single already-loaded sprite texture.
    * @param {{col: number, row: number}} room
    * @return {void}
    */
@@ -207,6 +205,9 @@ export class MapScene extends Phaser.Scene {
     const ROOM_BOTTOM = ROOM_TOP + ROOM_HEIGHT;
 
     this.gidObjectLayers.forEach((layer) => {
+      const OVERWORLD_IDS = [];
+      const DEPTH = layer.name === 'WorldBorder' ? -0.5 : 0;
+
       layer.objects.forEach((object) => {
         if (object.gid === undefined) {
           return;
@@ -217,28 +218,40 @@ export class MapScene extends Phaser.Scene {
           return;
         };
 
-        const GID = clearGidFlags(object.gid);
-        const REF = this._getTilesetRefForGid(GID);
+        const REF = this._getTilesetRefForGid(object.gid);
         if (!REF) {
           return;
         };
 
         if (REF.source === 'Overworld.tsx') {
+          OVERWORLD_IDS.push(object.id);
           return;
         };
 
-        const DECORATION_TILE = this.decorationTilesByGid[GID];
+        const DECORATION_TILE = this.decorationTilesByGid[object.gid];
         if (!DECORATION_TILE) {
           return;
         };
 
-        const CENTER_X = object.x + object.width / 2 - ROOM_LEFT;
-        const CENTER_Y = object.y - object.height / 2 - ROOM_TOP;
-        const sprite = this.add.image(CENTER_X, CENTER_Y, DECORATION_TILE.key)
-          .setDisplaySize(object.width, object.height);
-
-        this.roomEnvironmentSprites.push(sprite);
+        const SPRITE = this.add.image(
+          object.x + object.width / 2 - ROOM_LEFT,
+          object.y - object.height / 2 - ROOM_TOP,
+          DECORATION_TILE.key,
+        ).setDisplaySize(object.width, object.height).setDepth(DEPTH);
+        this.roomEnvironmentSprites.push(SPRITE);
       });
+
+      if (OVERWORLD_IDS.length > 0) {
+        const SPRITES = this.tilemap.createFromObjects(layer.name, { id: OVERWORLD_IDS });
+        SPRITES.forEach((sprite) => {
+          sprite.setPosition(
+            sprite.x - ROOM_LEFT,
+            sprite.y - ROOM_TOP,
+          );
+          sprite.setDepth(DEPTH);
+          this.roomEnvironmentSprites.push(sprite);
+        });
+      };
     });
   }
 

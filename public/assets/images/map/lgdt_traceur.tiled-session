@@ -11,7 +11,7 @@
     "fileStates": {
         "Overworld.tsx": {
             "dynamicWrapping": false,
-            "scaleInDock": 1.5,
+            "scaleInDock": 0.5,
             "scaleInEditor": 1.5
         },
         "bush.tsx": {
@@ -20,11 +20,11 @@
             "scaleInEditor": 1
         },
         "map1.tmx": {
-            "scale": 1,
-            "selectedLayer": 0,
+            "scale": 0.25,
+            "selectedLayer": 2,
             "viewCenter": {
-                "x": 2168.5,
-                "y": 1335
+                "x": 362,
+                "y": 1708
             }
         },
         "thornbush.tsx": {
