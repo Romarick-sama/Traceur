@@ -212,15 +212,6 @@ export class Level {
   }
 
   /**
-   * Returns every environment object of the given type.
-   * @param {string} type
-   * @return {Phaser.Physics.Arcade.Image[]}
-   */
-  getEnvironmentByType(type) {
-    return this.environment.filter((object) => object.type === type);
-  }
-
-  /**
    * Destroys the human, the dog and every environment object of the level.
    * @return {void}
    */

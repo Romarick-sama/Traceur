@@ -75,7 +75,7 @@ export function globalToLocal(
  * @returns The `roomKey` function returns a string that concatenates the `col` and `row` parameters
  * separated by a comma.
  */
-export function roomKey(
+function roomKey(
   col,
   row,
 ) {

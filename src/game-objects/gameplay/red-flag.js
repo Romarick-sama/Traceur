@@ -12,10 +12,6 @@ export const RED_FLAG_TYPES = {
     id: 'THORN_BUSH',
     message: 'Le tracé passe à travers des ronces, le chien risque de s\'y faire mal.',
   },
-  RIVER: {
-    id: 'RIVER',
-    message: 'Le tracé passe à travers une rivière, le chien risque de s\'agiter.',
-  },
 };
 
 /**

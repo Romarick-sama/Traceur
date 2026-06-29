@@ -7,5 +7,4 @@ export const SCENE_KEYS = {
   COACH: 'COACH',
   CORRECTION: 'CORRECTION',
   SOLUTION: 'SOLUTION',
-  END: 'END',
 };
