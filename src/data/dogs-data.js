@@ -18,6 +18,10 @@ export const DOGS_DATA = {
       'Traversé de chemin contaminé',
       'Contamination chien/humain (tracé d\'autres individus, niveau avancé)',
     ],
+    clusterThresholds: {
+      BUSH: 4,
+      THORN_BUSH: 3,
+    },
   },
   2: {
     id: 2,
@@ -33,6 +37,10 @@ export const DOGS_DATA = {
       'Contamination chien',
       'Demi-tour',
     ],
+    clusterThresholds: {
+      BUSH: 3,
+      THORN_BUSH: 2,
+    },
   },
 };
 

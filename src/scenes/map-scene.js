@@ -18,7 +18,9 @@ import {
   getEnvironmentRenderContext,
   getTilesetRefForGid,
 } from '../game-objects/gameplay/environment-sprites.js';
+import { getClusterSize } from '../game-objects/gameplay/cluster.js';
 import { getLevelConfig } from '../data/levels-data.js';
+import { getDogProfile } from '../data/dogs-data.js';
 
 const TRACE_MIN_DISTANCE = 8;
 const ROOM_TRANSITION_FLASH_DURATION = 120;
@@ -183,6 +185,8 @@ export class MapScene extends Phaser.Scene {
       this.roomColliders.add(BODY);
     });
 
+    const BUSH_THRESHOLD = (getDogProfile(this.dogId).clusterThresholds || {}).BUSH || 1;
+
     BUSH_RECTS.forEach((bush) => {
       const BODY = this.add.rectangle(
         bush.x + bush.width / 2,
@@ -194,9 +198,13 @@ export class MapScene extends Phaser.Scene {
       BODY.type = 'BUSH';
       this.roomBushZones.push(BODY);
 
+      const CLUSTER_SIZE = getClusterSize(BUSH_RECTS, bush);
+
       if (this.human) {
         this.physics.add.overlap(this.human, BODY, () => {
-          this.human.collidedWithGameObject(BODY);
+          if (CLUSTER_SIZE >= BUSH_THRESHOLD) {
+            this.human.collidedWithGameObject(BODY);
+          };
         });
       };
     });
