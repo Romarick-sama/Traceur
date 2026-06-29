@@ -489,7 +489,7 @@ export class MapScene extends Phaser.Scene {
    */
   _formatDistanceText() {
     const METERS = Math.round(this.distanceTraveledPx / PIXELS_PER_METER);
-    return `${METERS}m / ${this.levelConfig.targetDistance}m`;
+    return `${METERS}m`;
   }
 
   /**
