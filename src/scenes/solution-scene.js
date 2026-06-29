@@ -8,8 +8,18 @@ import {
   globalToLocal,
   ROOM_WIDTH,
   ROOM_HEIGHT,
+  MAP_COLS,
+  MAP_ROWS,
 } from '../game-objects/gameplay/map.js';
+import {
+  buildRoomEnvironmentSprites,
+  getEnvironmentRenderContext,
+  getObstacleRects,
+} from '../game-objects/gameplay/environment-sprites.js';
+import { findAvoidingPath } from '../game-objects/gameplay/solution-pathfinder.js';
 import { getLevelConfig } from '../data/levels-data.js';
+
+const OBSTACLE_TILESETS = ['tree.tsx', 'bush.tsx', 'thornbush.tsx'];
 
 const SOLUTION_LINE_COLOR = 0x22cc70;
 const SOLUTION_LINE_WIDTH = 4;
@@ -38,12 +48,6 @@ export class SolutionScene extends Phaser.Scene {
       mapData = data.environment;
     }
     this.mapData = mapData;
-
-    let solutionData;
-    if (data) {
-      solutionData = data.solution;
-    }
-    this.solutionData = solutionData;
   }
 
   create() {
@@ -64,18 +68,17 @@ export class SolutionScene extends Phaser.Scene {
     }
     this.mapData = mapData;
 
-    let solutionData;
-    if (this.solutionData !== undefined && this.solutionData !== null) {
-      solutionData = this.solutionData;
-    } else {
-      solutionData = this.levelConfig.solution;
-    }
-    this.solutionData = solutionData;
-
     this.roomStage = new RoomStage(this, this.mapData);
     this._createTilemap();
     this.solutionGraphics = this.add.graphics();
     this.solutionGraphics.setDepth(4);
+
+    const SOLUTIONS = this.levelConfig.solutions;
+    const PICKED = SOLUTIONS[Phaser.Math.Between(0, SOLUTIONS.length - 1)];
+    this.solutionData = {
+      ...PICKED,
+      waypoints: this._buildAvoidingWaypoints(PICKED.waypoints),
+    };
 
     const START = this.solutionData.waypoints[0];
     const START_ROOM = globalToRoom(
@@ -100,6 +103,24 @@ export class SolutionScene extends Phaser.Scene {
     this._showRoom(START_ROOM);
 
     this._playStep(0);
+  }
+
+  /**
+   * Recomputes the route between a solution's first and last waypoint so it
+   * avoids every tree/bush/thornbush decoration on the map, instead of
+   * potentially cutting straight through one.
+   * @param {Array<{x: number, y: number}>} waypoints
+   * @return {Array<{x: number, y: number}>}
+   */
+  _buildAvoidingWaypoints(waypoints) {
+    const OBSTACLES = getObstacleRects(this.gidObjectLayers, this.tilesetRefs, OBSTACLE_TILESETS);
+    return findAvoidingPath(
+      waypoints[0],
+      waypoints[waypoints.length - 1],
+      OBSTACLES,
+      MAP_COLS * ROOM_WIDTH,
+      MAP_ROWS * ROOM_HEIGHT,
+    );
   }
 
   /**
@@ -251,7 +272,7 @@ export class SolutionScene extends Phaser.Scene {
    * position is hard-set every tween frame (see _moveTracerTo), so any
    * collision separation would just get overwritten by the next frame and
    * drift the tracer off the line. The route itself is already guaranteed
-   * obstacle/red-flag-free by AVOIDED_FOR_SOLUTION in map.js's pathfinding.
+   * obstacle/red-flag-free by `findAvoidingPath` (solution-pathfinder.js).
    * @param {{col: number, row: number}} room
    * @return {void}
    */
@@ -261,6 +282,7 @@ export class SolutionScene extends Phaser.Scene {
       room.row,
     );
     this._positionTilemapForRoom(room);
+    this._buildRoomEnvironmentSprites(room);
     this.roomEntryIndex = this.revealedIndex;
     this._drawSolutionTrace();
   }
@@ -273,6 +295,31 @@ export class SolutionScene extends Phaser.Scene {
     const TILEMAP = this.make.tilemap({ key: ASSET_KEYS.MAP_TILEMAP });
     const TILESET = TILEMAP.addTilesetImage('Overworld', ASSET_KEYS.MAP_TILES);
     this.tilemapLayer = TILEMAP.createLayer(0, TILESET, 0, 0).setDepth(-1);
+    this.tilemap = TILEMAP;
+
+    const CONTEXT = getEnvironmentRenderContext(this, TILEMAP, ASSET_KEYS.MAP_TILEMAP);
+    this.tilesetRefs = CONTEXT.tilesetRefs;
+    this.decorationTilesByGid = CONTEXT.decorationTilesByGid;
+    this.gidObjectLayers = CONTEXT.gidObjectLayers;
+  }
+
+  /**
+   * (Re)builds the Environment/WorldBorder decoration sprites for the
+   * given room, same rendering as MapScene's gameplay.
+   * @param {{col: number, row: number}} room
+   * @return {void}
+   */
+  _buildRoomEnvironmentSprites(room) {
+    if (this.roomEnvironmentSprites) {
+      this.roomEnvironmentSprites.forEach((sprite) => sprite.destroy());
+    };
+
+    this.roomEnvironmentSprites = buildRoomEnvironmentSprites(this, room, {
+      tilemap: this.tilemap,
+      gidObjectLayers: this.gidObjectLayers,
+      tilesetRefs: this.tilesetRefs,
+      decorationTilesByGid: this.decorationTilesByGid,
+    });
   }
 
   /**

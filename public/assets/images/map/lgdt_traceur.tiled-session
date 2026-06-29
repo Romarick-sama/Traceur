@@ -11,7 +11,7 @@
     "fileStates": {
         "Overworld.tsx": {
             "dynamicWrapping": false,
-            "scaleInDock": 0.5,
+            "scaleInDock": 3,
             "scaleInEditor": 1.5
         },
         "bush.tsx": {
@@ -20,11 +20,11 @@
             "scaleInEditor": 1
         },
         "map1.tmx": {
-            "scale": 0.25,
-            "selectedLayer": 2,
+            "scale": 0.125,
+            "selectedLayer": 3,
             "viewCenter": {
-                "x": 362,
-                "y": 1708
+                "x": 1616,
+                "y": 1352
             }
         },
         "thornbush.tsx": {
@@ -58,15 +58,16 @@
     "map.tileWidth": 16,
     "map.width": 150,
     "openFiles": [
-        "map1.tmx"
+        "map1.tmx",
+        "Overworld.tsx"
     ],
     "project": "lgdt_traceur.tiled-project",
     "recentFiles": [
+        "Overworld.tsx",
         "map1.tmx",
         "untitled.tmx",
         "thornbush.tsx",
         "tree1.tsx",
-        "Overworld.tsx",
         "tree.tsx",
         "bush.tsx"
     ],

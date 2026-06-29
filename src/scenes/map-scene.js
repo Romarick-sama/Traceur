@@ -13,6 +13,11 @@ import {
   MAP_ROWS,
   PIXELS_PER_METER,
 } from '../game-objects/gameplay/map.js';
+import {
+  buildRoomEnvironmentSprites,
+  getEnvironmentRenderContext,
+  getTilesetRefForGid,
+} from '../game-objects/gameplay/environment-sprites.js';
 import { getLevelConfig } from '../data/levels-data.js';
 
 const TRACE_MIN_DISTANCE = 8;
@@ -130,25 +135,10 @@ export class MapScene extends Phaser.Scene {
     const COLLISION_LAYER = TILEMAP.getObjectLayer('collision');
     this.collisionObjects = COLLISION_LAYER ? COLLISION_LAYER.objects : [];
 
-    const TILEMAP_DATA = this.cache.tilemap.get(ASSET_KEYS.MAP_TILEMAP).data;
-    this.tilesetRefs = TILEMAP_DATA.tilesetRefs;
-    this.decorationTilesByGid = TILEMAP_DATA.decorationTilesByGid;
-    this.gidObjectLayers = ['WorldBorder', 'Environment']
-      .map((name) => TILEMAP.getObjectLayer(name))
-      .filter(Boolean);
-  }
-
-  /**
-   * Finds which tileset reference (Overworld vs the standalone
-   * tree/bush/thornbush tilesets) a tile object's gid belongs to, based on
-   * the highest firstgid not exceeding the gid.
-   * @param {number} gid
-   * @return {{firstgid: number, source: string}|undefined}
-   */
-  _getTilesetRefForGid(gid) {
-    return [...this.tilesetRefs]
-      .sort((a, b) => b.firstgid - a.firstgid)
-      .find((ref) => gid >= ref.firstgid);
+    const CONTEXT = getEnvironmentRenderContext(this, TILEMAP, ASSET_KEYS.MAP_TILEMAP);
+    this.tilesetRefs = CONTEXT.tilesetRefs;
+    this.decorationTilesByGid = CONTEXT.decorationTilesByGid;
+    this.gidObjectLayers = CONTEXT.gidObjectLayers;
   }
 
   /**
@@ -243,7 +233,7 @@ export class MapScene extends Phaser.Scene {
           return;
         };
 
-        const REF = this._getTilesetRefForGid(object.gid);
+        const REF = getTilesetRefForGid(this.tilesetRefs, object.gid);
         if (!REF || REF.source !== 'bush.tsx') {
           return;
         };
@@ -275,61 +265,12 @@ export class MapScene extends Phaser.Scene {
     if (this.roomEnvironmentSprites) {
       this.roomEnvironmentSprites.forEach((sprite) => sprite.destroy());
     };
-    this.roomEnvironmentSprites = [];
 
-    const ROOM_LEFT = room.col * ROOM_WIDTH;
-    const ROOM_TOP = room.row * ROOM_HEIGHT;
-    const ROOM_RIGHT = ROOM_LEFT + ROOM_WIDTH;
-    const ROOM_BOTTOM = ROOM_TOP + ROOM_HEIGHT;
-
-    this.gidObjectLayers.forEach((layer) => {
-      const OVERWORLD_IDS = [];
-      const DEPTH = layer.name === 'WorldBorder' ? -0.5 : 0;
-
-      layer.objects.forEach((object) => {
-        if (object.gid === undefined) {
-          return;
-        };
-
-        if (object.x >= ROOM_RIGHT || object.x + object.width <= ROOM_LEFT
-          || object.y - object.height >= ROOM_BOTTOM || object.y <= ROOM_TOP) {
-          return;
-        };
-
-        const REF = this._getTilesetRefForGid(object.gid);
-        if (!REF) {
-          return;
-        };
-
-        if (REF.source === 'Overworld.tsx') {
-          OVERWORLD_IDS.push(object.id);
-          return;
-        };
-
-        const DECORATION_TILE = this.decorationTilesByGid[object.gid];
-        if (!DECORATION_TILE) {
-          return;
-        };
-
-        const SPRITE = this.add.image(
-          object.x + object.width / 2 - ROOM_LEFT,
-          object.y - object.height / 2 - ROOM_TOP,
-          DECORATION_TILE.key,
-        ).setDisplaySize(object.width, object.height).setDepth(DEPTH);
-        this.roomEnvironmentSprites.push(SPRITE);
-      });
-
-      if (OVERWORLD_IDS.length > 0) {
-        const SPRITES = this.tilemap.createFromObjects(layer.name, { id: OVERWORLD_IDS });
-        SPRITES.forEach((sprite) => {
-          sprite.setPosition(
-            sprite.x - ROOM_LEFT,
-            sprite.y - ROOM_TOP,
-          );
-          sprite.setDepth(DEPTH);
-          this.roomEnvironmentSprites.push(sprite);
-        });
-      };
+    this.roomEnvironmentSprites = buildRoomEnvironmentSprites(this, room, {
+      tilemap: this.tilemap,
+      gidObjectLayers: this.gidObjectLayers,
+      tilesetRefs: this.tilesetRefs,
+      decorationTilesByGid: this.decorationTilesByGid,
     });
   }
 
@@ -563,7 +504,6 @@ export class MapScene extends Phaser.Scene {
       trace: this.globalTrace,
       redFlags: this.roomStage.level.getRedFlags(this.human),
       environment: this.mapData,
-      solution: this.mapData.solution,
     });
   }
 

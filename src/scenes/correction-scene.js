@@ -10,6 +10,7 @@ import {
   ROOM_WIDTH,
   ROOM_HEIGHT,
 } from '../game-objects/gameplay/map.js';
+import { buildRoomEnvironmentSprites, getEnvironmentRenderContext } from '../game-objects/gameplay/environment-sprites.js';
 import { getLevelConfig } from '../data/levels-data.js';
 import { getDogProfile } from '../data/dogs-data.js';
 
@@ -60,12 +61,6 @@ export class CorrectionScene extends Phaser.Scene {
       mapData = data.environment;
     }
     this.mapData = mapData;
-
-    let solution;
-    if (data) {
-      solution = data.solution;
-    }
-    this.solution = solution;
   }
 
   create() {
@@ -184,6 +179,7 @@ export class CorrectionScene extends Phaser.Scene {
       room.row,
     );
     this._positionTilemapForRoom(room);
+    this._buildRoomEnvironmentSprites(room);
     this._drawPlayerTrace();
     this._syncGhostHuman();
   }
@@ -196,6 +192,31 @@ export class CorrectionScene extends Phaser.Scene {
     const TILEMAP = this.make.tilemap({ key: ASSET_KEYS.MAP_TILEMAP });
     const TILESET = TILEMAP.addTilesetImage('Overworld', ASSET_KEYS.MAP_TILES);
     this.tilemapLayer = TILEMAP.createLayer(0, TILESET, 0, 0).setDepth(-1);
+    this.tilemap = TILEMAP;
+
+    const CONTEXT = getEnvironmentRenderContext(this, TILEMAP, ASSET_KEYS.MAP_TILEMAP);
+    this.tilesetRefs = CONTEXT.tilesetRefs;
+    this.decorationTilesByGid = CONTEXT.decorationTilesByGid;
+    this.gidObjectLayers = CONTEXT.gidObjectLayers;
+  }
+
+  /**
+   * (Re)builds the Environment/WorldBorder decoration sprites for the
+   * given room, same rendering as MapScene's gameplay.
+   * @param {{col: number, row: number}} room
+   * @return {void}
+   */
+  _buildRoomEnvironmentSprites(room) {
+    if (this.roomEnvironmentSprites) {
+      this.roomEnvironmentSprites.forEach((sprite) => sprite.destroy());
+    };
+
+    this.roomEnvironmentSprites = buildRoomEnvironmentSprites(this, room, {
+      tilemap: this.tilemap,
+      gidObjectLayers: this.gidObjectLayers,
+      tilesetRefs: this.tilesetRefs,
+      decorationTilesByGid: this.decorationTilesByGid,
+    });
   }
 
   /**
@@ -470,7 +491,6 @@ export class CorrectionScene extends Phaser.Scene {
         this.scene.start(SCENE_KEYS.SOLUTION, {
           level: this.levelNumber,
           environment: this.mapData,
-          solution: this.solution,
         });
       },
     ));

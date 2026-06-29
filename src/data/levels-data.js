@@ -16,27 +16,28 @@ export const LEVELS_DATA = {
     },
     environment: [],
     targetDistance: 300,
-    solution: {
-      waypoints: [
-        {
-          x: 400,
-          y: 300,
-        },
-        {
-          x: 400,
-          y: 460,
-        },
-        {
-          x: 600,
-          y: 460,
-        },
-      ],
-      explanations: [
-        'Pars depuis ton point de départ.',
-        "Avance tout droit, en évitant le plus possible les obstacles.",
-        'Cache-toi ici, à bonne distance, pour que le chien doive vraiment chercher.',
-      ],
-    },
+    solutions: [
+      {
+        waypoints: [
+          { x: 1200, y: 2800 },
+          { x: 400, y: 2800 },
+          { x: 400, y: 200 },
+        ],
+      },
+      {
+        waypoints: [
+          { x: 1200, y: 2800 },
+          { x: 1200, y: 200 },
+        ],
+      },
+      {
+        waypoints: [
+          { x: 1200, y: 2800 },
+          { x: 2000, y: 2800 },
+          { x: 2000, y: 200 },
+        ],
+      },
+    ],
   },
 };
 

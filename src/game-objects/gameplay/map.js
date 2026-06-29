@@ -141,7 +141,7 @@ export function getRoomCollisionRects(
  * with the level's fixed environment placed in the starting room only
  * (every other room is just the bare tilemap), no randomness.
  * @param levelConfig
- * @return {{startRoom: {col: number, row: number}, startLocal: {x: number, y: number}, rooms: Map<string, Array>, solution: object}}
+ * @return {{startRoom: {col: number, row: number}, startLocal: {x: number, y: number}, rooms: Map<string, Array>}}
  */
 export function buildMapData(levelConfig) {
   const START_ROOM = {
@@ -156,6 +156,5 @@ export function buildMapData(levelConfig) {
       y: levelConfig.human.y,
     },
     rooms: new Map([[roomKey(START_ROOM.col, START_ROOM.row), levelConfig.environment || []]]),
-    solution: levelConfig.solution,
   };
 }
