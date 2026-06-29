@@ -109,13 +109,17 @@ export class SolutionScene extends Phaser.Scene {
 
   /**
    * Recomputes the route between a solution's first and last waypoint so it
-   * avoids every tree/bush/thornbush decoration on the map, instead of
-   * potentially cutting straight through one.
+   * avoids every tree/bush/thornbush decoration on the map, as well as the
+   * hand-drawn "collision" walls the human can't walk through either
+   * during gameplay - instead of potentially cutting straight through one.
    * @param {Array<{x: number, y: number}>} waypoints
    * @return {Array<{x: number, y: number}>}
    */
   _buildAvoidingWaypoints(waypoints) {
-    const OBSTACLES = getObstacleRects(this.gidObjectLayers, this.tilesetRefs, OBSTACLE_TILESETS);
+    const OBSTACLES = [
+      ...getObstacleRects(this.gidObjectLayers, this.tilesetRefs, OBSTACLE_TILESETS),
+      ...this.collisionObjects,
+    ];
     return findAvoidingPath(
       waypoints[0],
       waypoints[waypoints.length - 1],
@@ -298,6 +302,9 @@ export class SolutionScene extends Phaser.Scene {
     const TILESET = TILEMAP.addTilesetImage('Overworld', ASSET_KEYS.MAP_TILES);
     this.tilemapLayer = TILEMAP.createLayer(0, TILESET, 0, 0).setDepth(-1);
     this.tilemap = TILEMAP;
+
+    const COLLISION_LAYER = TILEMAP.getObjectLayer('collision');
+    this.collisionObjects = COLLISION_LAYER ? COLLISION_LAYER.objects : [];
 
     const CONTEXT = getEnvironmentRenderContext(this, TILEMAP, ASSET_KEYS.MAP_TILEMAP);
     this.tilesetRefs = CONTEXT.tilesetRefs;

@@ -7,7 +7,7 @@ export const LEVELS_DATA = {
   1: {
     human: {
       x: 400,
-      y: 400,
+      y: 350,
     },
     dog: {
       x: 560,
@@ -19,20 +19,20 @@ export const LEVELS_DATA = {
     solutions: [
       {
         waypoints: [
-          { x: 1200, y: 2800 },
+          { x: 1200, y: 2750 },
           { x: 400, y: 2800 },
           { x: 400, y: 200 },
         ],
       },
       {
         waypoints: [
-          { x: 1200, y: 2800 },
+          { x: 1200, y: 2750 },
           { x: 1200, y: 200 },
         ],
       },
       {
         waypoints: [
-          { x: 1200, y: 2800 },
+          { x: 1200, y: 2750 },
           { x: 2000, y: 2800 },
           { x: 2000, y: 200 },
         ],

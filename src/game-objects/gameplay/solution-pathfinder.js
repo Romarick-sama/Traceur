@@ -1,4 +1,4 @@
-const CELL_SIZE = 40;
+const CELL_SIZE = 20;
 
 /**
  * Marks every grid cell overlapping an obstacle (inflated by `margin`) as
@@ -35,53 +35,44 @@ function buildGrid(mapWidthPx, mapHeightPx, obstacles, margin) {
 }
 
 /**
- * Finds a 4-directional, obstacle-avoiding route between two global points
- * (BFS over a coarse grid covering the whole map), then simplifies it down
- * to the corner waypoints only, so the result stays purely axis-aligned
- * between consecutive waypoints (same convention as the rest of the
- * solution-trace rendering).
- * @param {{x: number, y: number}} start
- * @param {{x: number, y: number}} end
- * @param {Array<{x: number, y: number, width: number, height: number}>} obstacles - top-left rects, global px
- * @param {number} mapWidthPx
- * @param {number} mapHeightPx
- * @param {number} [margin=24] - safety margin added around each obstacle, in px
- * @return {Array<{x: number, y: number}>}
+ * BFS from `start` to `end` over the obstacle grid. Always returns the
+ * best route it found: the exact target if reachable, otherwise the route
+ * to whichever visited cell ended up closest to the target - so a route
+ * that can't fully reach the target never degrades into a straight line
+ * cutting through every obstacle in between.
+ * @return {{cellPath: Array<number>, cols: number}}
  */
-export function findAvoidingPath(
-  start,
-  end,
-  obstacles,
-  mapWidthPx,
-  mapHeightPx,
-  margin = 24,
-) {
-  const { cols: COLS, rows: ROWS, blocked: BLOCKED } = buildGrid(
-    mapWidthPx,
-    mapHeightPx,
-    obstacles,
-    margin,
-  );
-
+function bfsClosestApproach(start, end, cols, rows, blocked) {
+  const cellIndex = (col, row) => row * cols + col;
   const toCell = (point) => ({
-    col: Phaser.Math.Clamp(Math.floor(point.x / CELL_SIZE), 0, COLS - 1),
-    row: Phaser.Math.Clamp(Math.floor(point.y / CELL_SIZE), 0, ROWS - 1),
+    col: Phaser.Math.Clamp(Math.floor(point.x / CELL_SIZE), 0, cols - 1),
+    row: Phaser.Math.Clamp(Math.floor(point.y / CELL_SIZE), 0, rows - 1),
   });
-  const cellIndex = (col, row) => row * COLS + col;
 
   const START_CELL = toCell(start);
   const END_CELL = toCell(end);
 
-  const VISITED = new Uint8Array(COLS * ROWS);
-  const PREV = new Int32Array(COLS * ROWS).fill(-1);
+  const VISITED = new Uint8Array(cols * rows);
+  const PREV = new Int32Array(cols * rows).fill(-1);
   const QUEUE = [START_CELL];
   VISITED[cellIndex(START_CELL.col, START_CELL.row)] = 1;
 
   const DIRECTIONS = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+
+  let bestIdx = cellIndex(START_CELL.col, START_CELL.row);
+  let bestDistance = Math.hypot(START_CELL.col - END_CELL.col, START_CELL.row - END_CELL.row);
   let found = false;
 
   while (QUEUE.length > 0) {
     const CURRENT = QUEUE.shift();
+    const CURRENT_IDX = cellIndex(CURRENT.col, CURRENT.row);
+
+    const DISTANCE_TO_END = Math.hypot(CURRENT.col - END_CELL.col, CURRENT.row - END_CELL.row);
+    if (DISTANCE_TO_END < bestDistance) {
+      bestDistance = DISTANCE_TO_END;
+      bestIdx = CURRENT_IDX;
+    };
+
     if (CURRENT.col === END_CELL.col && CURRENT.row === END_CELL.row) {
       found = true;
       break;
@@ -90,17 +81,17 @@ export function findAvoidingPath(
     DIRECTIONS.forEach(([deltaCol, deltaRow]) => {
       const NEXT_COL = CURRENT.col + deltaCol;
       const NEXT_ROW = CURRENT.row + deltaRow;
-      if (NEXT_COL < 0 || NEXT_COL >= COLS || NEXT_ROW < 0 || NEXT_ROW >= ROWS) {
+      if (NEXT_COL < 0 || NEXT_COL >= cols || NEXT_ROW < 0 || NEXT_ROW >= rows) {
         return;
       };
 
       const IDX = cellIndex(NEXT_COL, NEXT_ROW);
-      if (VISITED[IDX] || BLOCKED[IDX]) {
+      if (VISITED[IDX] || blocked[IDX]) {
         return;
       };
 
       VISITED[IDX] = 1;
-      PREV[IDX] = cellIndex(CURRENT.col, CURRENT.row);
+      PREV[IDX] = CURRENT_IDX;
       QUEUE.push({
         col: NEXT_COL,
         row: NEXT_ROW,
@@ -108,21 +99,35 @@ export function findAvoidingPath(
     });
   }
 
-  if (!found) {
-    return [start, end];
-  };
-
+  const TARGET_IDX = found ? cellIndex(END_CELL.col, END_CELL.row) : bestIdx;
   const CELL_PATH = [];
-  let cursor = cellIndex(END_CELL.col, END_CELL.row);
+  let cursor = TARGET_IDX;
   while (cursor !== -1) {
     CELL_PATH.push(cursor);
     cursor = PREV[cursor];
   }
   CELL_PATH.reverse();
 
-  const PIXELS = CELL_PATH.map((idx) => ({
-    x: (idx % COLS) * CELL_SIZE + CELL_SIZE / 2,
-    y: Math.floor(idx / COLS) * CELL_SIZE + CELL_SIZE / 2,
+  return {
+    cellPath: CELL_PATH,
+    reachedEnd: found,
+  };
+}
+
+/**
+ * Simplifies a cell path down to its corner waypoints only, so the result
+ * stays purely axis-aligned between consecutive waypoints (same
+ * convention as the rest of the solution-trace rendering).
+ * @param {Array<number>} cellPath
+ * @param {number} cols
+ * @param {{x: number, y: number}} start
+ * @param {{x: number, y: number}} end
+ * @return {Array<{x: number, y: number}>}
+ */
+function simplifyToWaypoints(cellPath, cols, start, end, reachedEnd) {
+  const PIXELS = cellPath.map((idx) => ({
+    x: (idx % cols) * CELL_SIZE + CELL_SIZE / 2,
+    y: Math.floor(idx / cols) * CELL_SIZE + CELL_SIZE / 2,
   }));
 
   const WAYPOINTS = [start];
@@ -136,7 +141,54 @@ export function findAvoidingPath(
       WAYPOINTS.push(CURRENT);
     };
   }
-  WAYPOINTS.push(end);
+  if (PIXELS.length > 0) {
+    WAYPOINTS.push(PIXELS[PIXELS.length - 1]);
+  };
+  if (reachedEnd) {
+    WAYPOINTS.push(end);
+  };
 
   return WAYPOINTS;
+}
+
+/**
+ * Finds a 4-directional, obstacle-avoiding route between two global points
+ * (BFS over a grid covering the whole map). Retries with a shrinking
+ * safety margin if the full margin pinches off every route, and as a last
+ * resort returns the route to the closest reachable approach point rather
+ * than ever drawing a straight line through the obstacles in between.
+ * @param {{x: number, y: number}} start
+ * @param {{x: number, y: number}} end
+ * @param {Array<{x: number, y: number, width: number, height: number}>} obstacles - top-left rects, global px
+ * @param {number} mapWidthPx
+ * @param {number} mapHeightPx
+ * @param {number} [margin=12] - safety margin added around each obstacle, in px
+ * @return {Array<{x: number, y: number}>}
+ */
+export function findAvoidingPath(
+  start,
+  end,
+  obstacles,
+  mapWidthPx,
+  mapHeightPx,
+  margin = 12,
+) {
+  const MARGINS_TO_TRY = [margin, Math.min(margin, 4), 0];
+
+  let bestResult = null;
+  for (let i = 0; i < MARGINS_TO_TRY.length; i++) {
+    const { cols: COLS, rows: ROWS, blocked: BLOCKED } = buildGrid(
+      mapWidthPx,
+      mapHeightPx,
+      obstacles,
+      MARGINS_TO_TRY[i],
+    );
+    const RESULT = bfsClosestApproach(start, end, COLS, ROWS, BLOCKED);
+    bestResult = { ...RESULT, cols: COLS };
+    if (RESULT.reachedEnd) {
+      break;
+    };
+  }
+
+  return simplifyToWaypoints(bestResult.cellPath, bestResult.cols, start, end, bestResult.reachedEnd);
 }
