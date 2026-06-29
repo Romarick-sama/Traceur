@@ -54,6 +54,8 @@ export class SolutionScene extends Phaser.Scene {
     this.levelConfig = getLevelConfig(this.levelNumber);
     this.cameras.main.setBackgroundColor(STYLE_CONFIGURATION.MAIN_BACKGROUND_COLOR);
 
+    this.roomEnvironmentSprites = undefined;
+
     let mapData;
     if (this.mapData !== undefined && this.mapData !== null) {
       mapData = this.mapData;

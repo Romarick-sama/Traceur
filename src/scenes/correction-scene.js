@@ -67,6 +67,10 @@ export class CorrectionScene extends Phaser.Scene {
     this.levelConfig = getLevelConfig(this.levelNumber);
     this.cameras.main.setBackgroundColor(STYLE_CONFIGURATION.MAIN_BACKGROUND_COLOR);
 
+    // Phaser reuses this scene's JS instance across plays - reset refs to
+    // last run's (now-destroyed) game objects before rebuilding.
+    this.roomEnvironmentSprites = undefined;
+
     let mapData;
     if (this.mapData !== undefined && this.mapData !== null) {
       mapData = this.mapData;

@@ -52,6 +52,10 @@ export class MapScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(STYLE_CONFIGURATION.MAIN_BACKGROUND_COLOR);
     this.levelConfig = getLevelConfig(this.levelNumber);
 
+    this.roomColliders = undefined;
+    this.roomBushZones = undefined;
+    this.roomEnvironmentSprites = undefined;
+
     this._showLoading();
 
     this.time.delayedCall(
