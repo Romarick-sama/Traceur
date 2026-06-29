@@ -163,10 +163,26 @@ export class MapScene extends Phaser.Scene {
     if (this.roomColliders) {
       this.roomColliders.clear(true, true);
     };
+    if (this.roomBushZones) {
+      this.roomBushZones.forEach((zone) => zone.destroy());
+    };
 
     this.roomColliders = this.physics.add.staticGroup();
+    this.roomBushZones = [];
+
+    const BUSH_RECTS = this._getBushRectsForRoom(room);
+    const isInsideBush = (rect) => {
+      const CENTER_X = rect.x + rect.width / 2;
+      const CENTER_Y = rect.y + rect.height / 2;
+      return BUSH_RECTS.some((bush) => CENTER_X >= bush.x && CENTER_X <= bush.x + bush.width
+        && CENTER_Y >= bush.y && CENTER_Y <= bush.y + bush.height);
+    };
 
     getRoomCollisionRects(this.collisionObjects, room.col, room.row).forEach((rect) => {
+      if (isInsideBush(rect)) {
+        return;
+      };
+
       const BODY = this.add.rectangle(
         rect.x + rect.width / 2,
         rect.y + rect.height / 2,
@@ -177,9 +193,71 @@ export class MapScene extends Phaser.Scene {
       this.roomColliders.add(BODY);
     });
 
+    BUSH_RECTS.forEach((bush) => {
+      const BODY = this.add.rectangle(
+        bush.x + bush.width / 2,
+        bush.y + bush.height / 2,
+        bush.width,
+        bush.height,
+      ).setVisible(false);
+      this.physics.add.existing(BODY, true);
+      BODY.type = 'BUSH';
+      this.roomBushZones.push(BODY);
+
+      if (this.human) {
+        this.physics.add.overlap(this.human, BODY, () => {
+          this.human.collidedWithGameObject(BODY);
+        });
+      };
+    });
+
     if (this.human) {
       this.physics.add.collider(this.human, this.roomColliders);
     };
+  }
+
+  /**
+   * Returns the room-local bounding boxes of every bush-tileset
+   * (bush.tsx) decoration object in the given room, derived straight from
+   * the sprite's own gid/position - so every bush drawn in Tiled is
+   * automatically walk-through (overlap, not collider) with a hitbox
+   * matching its own artwork, no manual tagging needed in Tiled.
+   * @param {{col: number, row: number}} room
+   * @return {Array<{x: number, y: number, width: number, height: number}>}
+   */
+  _getBushRectsForRoom(room) {
+    const ROOM_LEFT = room.col * ROOM_WIDTH;
+    const ROOM_TOP = room.row * ROOM_HEIGHT;
+    const ROOM_RIGHT = ROOM_LEFT + ROOM_WIDTH;
+    const ROOM_BOTTOM = ROOM_TOP + ROOM_HEIGHT;
+    const RECTS = [];
+
+    this.gidObjectLayers.forEach((layer) => {
+      layer.objects.forEach((object) => {
+        if (object.gid === undefined) {
+          return;
+        };
+
+        if (object.x >= ROOM_RIGHT || object.x + object.width <= ROOM_LEFT
+          || object.y - object.height >= ROOM_BOTTOM || object.y <= ROOM_TOP) {
+          return;
+        };
+
+        const REF = this._getTilesetRefForGid(object.gid);
+        if (!REF || REF.source !== 'bush.tsx') {
+          return;
+        };
+
+        RECTS.push({
+          x: object.x - ROOM_LEFT,
+          y: object.y - object.height - ROOM_TOP,
+          width: object.width,
+          height: object.height,
+        });
+      });
+    });
+
+    return RECTS;
   }
 
   /**
