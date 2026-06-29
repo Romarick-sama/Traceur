@@ -9,6 +9,7 @@ import {
   globalToLocal,
   ROOM_WIDTH,
   ROOM_HEIGHT,
+  PIXELS_PER_METER,
 } from '../game-objects/gameplay/map.js';
 import { buildRoomEnvironmentSprites, getEnvironmentRenderContext } from '../game-objects/gameplay/environment-sprites.js';
 import { getLevelConfig } from '../data/levels-data.js';
@@ -89,7 +90,7 @@ export class CorrectionScene extends Phaser.Scene {
 
     this._createActors();
 
-    if (this.redFlags.length > 0 || this.playerTrace.length < 2) {
+    if (this.redFlags.length > 0 || !this._hasReachedTargetDistance()) {
       this._showResult(false);
       return;
     };
@@ -271,6 +272,33 @@ export class CorrectionScene extends Phaser.Scene {
         LOCAL.y,
       );
     };
+  }
+
+  /**
+   * Checks the player's actual displacement: the straight-line distance
+   * (in meters) between where the trace started and where it ended, in
+   * global coordinates - so it's measured correctly whether the human
+   * stayed in the spawn room or wandered into a completely different one.
+   * Walking back and forth without net distance, or hiding too close to
+   * the spawn point, doesn't satisfy the level's targetDistance even with
+   * zero red flags.
+   * @return {boolean}
+   */
+  _hasReachedTargetDistance() {
+    if (this.playerTrace.length < 2) {
+      return false;
+    };
+
+    const START = this.playerTrace[0];
+    const END = this.playerTrace[this.playerTrace.length - 1];
+    const DISPLACEMENT_METERS = Phaser.Math.Distance.Between(
+      START.x,
+      START.y,
+      END.x,
+      END.y,
+    ) / PIXELS_PER_METER;
+
+    return DISPLACEMENT_METERS >= this.levelConfig.targetDistance;
   }
 
   /**
